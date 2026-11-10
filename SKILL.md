@@ -6,6 +6,7 @@ description: >-
 
 # KỸ NĂNG TỰ ĐỘNG CHẤM ĐIỂM BÀI THI TOÁN TỪ GOOGLE DRIVE (CHAM-DIEM-HOC-SINH)
 > **Chủ nhiệm hệ thống**: ThS. Nguyễn Văn Sang - Khoa Cơ bản - Trường Cao đẳng Nghề số 1 - BQP.  
+> **GitHub Repository**: [https://github.com/sanginnova/cham-diem-hoc-sinh](https://github.com/sanginnova/cham-diem-hoc-sinh)  
 > **Lệnh kích hoạt**: `/cham-diem`, `/cham-bai`, hoặc câu lệnh: *"chấm điểm học sinh từ link drive"*, *"tổng hợp điểm và lỗi sai"*, *"cập nhật thêm bài làm mới"*.
 
 ---

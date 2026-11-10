@@ -1,0 +1,12 @@
+# Cache & Python
+__pycache__/
+*.py[cod]
+*$*.xlsx
+*.tmp
+.idea/
+.vscode/
+
+# Raw and output images (protect privacy & repo size)
+anh_bai_lam/
+anh_da_cham/
+!docs/samples/

@@ -717,8 +717,9 @@ def run_batch():
                 try:
                     omr_t = parse_img_time(omr_file)
                     f_idx = all_basenames.index(omr_file)
-                    adjacent = []
-                    # Tìm các ảnh tự luận được chụp ngay sau phiếu trắc nghiệm (trong 120s) và trước HS tiếp theo
+                    
+                    # Tìm ảnh tự luận chụp ngay sau phiếu trắc nghiệm (trong 120s) và trước HS tiếp theo
+                    fwd = []
                     for offset in range(1, 10):
                         check_idx = f_idx + offset
                         if check_idx >= len(all_basenames):
@@ -730,7 +731,24 @@ def run_batch():
                         if cand_t and omr_t:
                             diff = (cand_t - omr_t).total_seconds()
                             if 0 < diff <= 120:
-                                adjacent.append(cand_name)
+                                fwd.append(cand_name)
+
+                    # Trường hợp chụp tự luận ngay trước phiếu trắc nghiệm (trong 120s)
+                    bwd = []
+                    for offset in range(-1, -10, -1):
+                        check_idx = f_idx + offset
+                        if check_idx < 0:
+                            break
+                        cand_name = all_basenames[check_idx]
+                        if cand_name in STUDENT_OMR_MAP.values():
+                            break
+                        cand_t = parse_img_time(cand_name)
+                        if cand_t and omr_t:
+                            diff = (omr_t - cand_t).total_seconds()
+                            if 0 < diff <= 120:
+                                bwd.append(cand_name)
+
+                    adjacent = fwd if len(fwd) > 0 else list(reversed(bwd))
 
                     if len(adjacent) == 1:
                         # Dọn dẹp file cũ nếu trước đó từng bị chia nhầm thành Trang1 / Trang2

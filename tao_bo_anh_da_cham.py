@@ -429,84 +429,84 @@ def annotate_omr_sheet(img_path, student, out_path):
 def draw_logic_step_box(ann, x, y, score_str, note_str, is_correct=True):
     border_color = (0, 0, 220) if is_correct else (0, 0, 255)
     bg_color = (255, 255, 255) if is_correct else (240, 240, 255)
-    box_w = 600
-    box_h = 95
+    box_w = 620
+    box_h = 100
     ann.draw_rect([(x, y - 50), (x + box_w, y + box_h - 50)], fill_bgr=bg_color, outline_bgr=border_color, width=3)
     ann.draw_text((x + 15, y - 40), score_str, size=32, color_bgr=border_color, bold=True)
     note_color = (40, 40, 40) if is_correct else (0, 0, 220)
-    ann.draw_text((x + 15, y + 5), note_str, size=21, color_bgr=note_color, bold=True)
+    ann.draw_text((x + 15, y + 5), note_str, size=22, color_bgr=note_color, bold=True)
 
 def draw_question_total(ann, x, y, q_str, color=(0, 0, 220)):
-    box_w = 600
+    box_w = 620
     box_h = 80
     ann.draw_rect([(x, y - 50), (x + box_w, y + box_h - 50)], fill_bgr=(230, 230, 255), outline_bgr=(0, 0, 255), width=4)
     ann.draw_text((x + 20, y - 35), q_str, size=34, color_bgr=color, bold=True)
 
 def draw_c19_logic(ann, x=2400, y_start=1800, c19_sc=1.0):
     if c19_sc >= 1.0:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Tiệm cận xiên: y = x/m + b/m")
-        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [✓]", "Hệ số góc: 1/m = 1/3 => m = 3")
-        draw_logic_step_box(ann, x, y_start + 850, "+0,25đ [✓]", "Hệ pt qua A, B: -b+c=-4, 3b+c=0")
-        draw_logic_step_box(ann, x, y_start + 1400, "+0,25đ [✓]", "Giải hệ tìm: b = 1, c = -3")
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Tiệm cận xiên: y = x/m + b/m")
+        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [Đúng]", "Hệ số góc: 1/m = 1/3 => m = 3")
+        draw_logic_step_box(ann, x, y_start + 850, "+0,25đ [Đúng]", "Hệ pt qua A, B: -b+c=-4, 3b+c=0")
+        draw_logic_step_box(ann, x, y_start + 1400, "+0,25đ [Đúng]", "Giải hệ tìm: b = 1, c = -3")
         draw_question_total(ann, x, y_start + 1650, f"TỔNG C19: {c19_sc:.2f} / 1,00đ")
     elif c19_sc > 0:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Tiệm cận xiên: y = x/m + b/m")
-        draw_logic_step_box(ann, x, y_start + 350, "0,00đ [✗]", "Nhầm hệ số góc / sai dấu m", is_correct=False)
-        draw_logic_step_box(ann, x, y_start + 850, "0,00đ [✗]", "Hệ phương trình bị sai nghiệm", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Tiệm cận xiên: y = x/m + b/m")
+        draw_logic_step_box(ann, x, y_start + 350, "0,00đ [Sai]", "Nhầm hệ số góc / sai dấu m", is_correct=False)
+        draw_logic_step_box(ann, x, y_start + 850, "0,00đ [Sai]", "Hệ phương trình bị sai nghiệm", is_correct=False)
         draw_question_total(ann, x, y_start + 1200, f"TỔNG C19: {c19_sc:.2f} / 1,00đ")
     else:
         draw_question_total(ann, x, y_start + 500, "TỔNG C19: 0,00đ (Chưa làm)")
 
 def draw_c20_logic(ann, x=2400, y_start=680, c20_sc=1.0):
     if c20_sc >= 1.0:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đạo hàm: v(t) = s'(t) = -t² + 8t + 9")
-        draw_logic_step_box(ann, x, y_start + 400, "+0,25đ [✓]", "Hoành độ đỉnh parabol: t = 4s")
-        draw_logic_step_box(ann, x, y_start + 800, "+0,25đ [✓]", "Kết luận thời điểm: t = 4s ∈ [0; 10]")
-        draw_logic_step_box(ann, x, y_start + 1150, "+0,25đ [✓]", "Giá trị lớn nhất: vmax = 25 m/s")
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đạo hàm: v(t) = s'(t) = -t² + 8t + 9")
+        draw_logic_step_box(ann, x, y_start + 400, "+0,25đ [Đúng]", "Hoành độ đỉnh parabol: t = 4s")
+        draw_logic_step_box(ann, x, y_start + 800, "+0,25đ [Đúng]", "Kết luận thời điểm: t = 4s ∈ [0; 10]")
+        draw_logic_step_box(ann, x, y_start + 1150, "+0,25đ [Đúng]", "Giá trị lớn nhất: vmax = 25 m/s")
         draw_question_total(ann, x, y_start + 1300, f"TỔNG C20: {c20_sc:.2f} / 1,00đ")
     elif c20_sc == 0.75:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đạo hàm: v(t) = s'(t) = -t² + 8t + 9")
-        draw_logic_step_box(ann, x, y_start + 400, "+0,25đ [✓]", "Hoành độ đỉnh parabol: t = 4s")
-        draw_logic_step_box(ann, x, y_start + 800, "+0,25đ [✓]", "Kết luận thời điểm: t = 4s ∈ [0; 10]")
-        draw_logic_step_box(ann, x, y_start + 1120, "0,00đ [✗]", "Thiếu bước tính giá trị vmax = 25 m/s", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đạo hàm: v(t) = s'(t) = -t² + 8t + 9")
+        draw_logic_step_box(ann, x, y_start + 400, "+0,25đ [Đúng]", "Hoành độ đỉnh parabol: t = 4s")
+        draw_logic_step_box(ann, x, y_start + 800, "+0,25đ [Đúng]", "Kết luận thời điểm: t = 4s ∈ [0; 10]")
+        draw_logic_step_box(ann, x, y_start + 1120, "0,00đ [Sai]", "Thiếu bước tính giá trị vmax = 25 m/s", is_correct=False)
         draw_question_total(ann, x, y_start + 1240, f"TỔNG C20: {c20_sc:.2f} / 1,00đ")
     elif c20_sc == 0.5:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đạo hàm: v(t) = s'(t)")
-        draw_logic_step_box(ann, x, y_start + 400, "+0,25đ [✓]", "Hoành độ đỉnh parabol: t = 4s")
-        draw_logic_step_box(ann, x, y_start + 800, "0,00đ [✗]", "Chưa lập luận cực đại trên đoạn", is_correct=False)
-        draw_logic_step_box(ann, x, y_start + 1120, "0,00đ [✗]", "Thiếu bước tính giá trị vmax", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đạo hàm: v(t) = s'(t)")
+        draw_logic_step_box(ann, x, y_start + 400, "+0,25đ [Đúng]", "Hoành độ đỉnh parabol: t = 4s")
+        draw_logic_step_box(ann, x, y_start + 800, "0,00đ [Sai]", "Chưa lập luận cực đại trên đoạn", is_correct=False)
+        draw_logic_step_box(ann, x, y_start + 1120, "0,00đ [Sai]", "Thiếu bước tính giá trị vmax", is_correct=False)
         draw_question_total(ann, x, y_start + 1240, f"TỔNG C20: {c20_sc:.2f} / 1,00đ")
     elif c20_sc > 0:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đạo hàm: v(t) = s'(t)")
-        draw_logic_step_box(ann, x, y_start + 400, "0,00đ [✗]", "Nhầm sang xét chiều chuyển động", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đạo hàm: v(t) = s'(t)")
+        draw_logic_step_box(ann, x, y_start + 400, "0,00đ [Sai]", "Nhầm sang xét chiều chuyển động", is_correct=False)
         draw_question_total(ann, x, y_start + 600, f"TỔNG C20: {c20_sc:.2f} / 1,00đ")
     else:
         draw_question_total(ann, x, y_start + 400, "TỔNG C20: 0,00đ (Chưa làm)")
 
 def draw_c21_logic(ann, x=2400, y_start=2150, c21_sc=1.0, is_stt27=False):
     if is_stt27:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Thiết lập hàm thời gian T(x)")
-        draw_logic_step_box(ann, x, y_start + 300, "+0,25đ [✓]", "Đạo hàm: T'(x) = 0 => x/√(x²+3600) = 3/8")
-        draw_logic_step_box(ann, x, y_start + 800, "0,00đ [✗]", "Lỗi logic đại số: 64 - 9 ≠ 7x² (ép kquả)", is_correct=False)
-        draw_logic_step_box(ann, x, y_start + 1250, "0,00đ [✗]", "Thiếu bảng biến thiên chứng minh GTNN", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Thiết lập hàm thời gian T(x)")
+        draw_logic_step_box(ann, x, y_start + 300, "+0,25đ [Đúng]", "Đạo hàm: T'(x) = 0 => x/√(x²+3600) = 3/8")
+        draw_logic_step_box(ann, x, y_start + 800, "0,00đ [Sai]", "Lỗi logic đại số: 64 - 9 ≠ 7x² (ép kquả)", is_correct=False)
+        draw_logic_step_box(ann, x, y_start + 1250, "0,00đ [Sai]", "Thiếu bảng biến thiên chứng minh GTNN", is_correct=False)
         draw_question_total(ann, x, y_start + 1400, f"TỔNG C21: {c21_sc:.2f} / 1,00đ")
     elif c21_sc >= 1.0:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đặt ẩn x = FE, thiết lập hàm T(x)")
-        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [✓]", "Đạo hàm: T'(x) = 0 => x/√(x²+3600) = 3/8")
-        draw_logic_step_box(ann, x, y_start + 850, "+0,25đ [✓]", "Giải đúng: 55x² = 32400 => x = 24,3m")
-        draw_logic_step_box(ann, x, y_start + 1300, "+0,25đ [✓]", "BBT chứng minh GTNN và kết luận")
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đặt ẩn x = FE, thiết lập hàm T(x)")
+        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [Đúng]", "Đạo hàm: T'(x) = 0 => x/√(x²+3600) = 3/8")
+        draw_logic_step_box(ann, x, y_start + 850, "+0,25đ [Đúng]", "Giải đúng: 55x² = 32400 => x = 24,3m")
+        draw_logic_step_box(ann, x, y_start + 1300, "+0,25đ [Đúng]", "BBT chứng minh GTNN và kết luận")
         draw_question_total(ann, x, y_start + 1450, f"TỔNG C21: {c21_sc:.2f} / 1,00đ")
     elif c21_sc == 0.75:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đặt ẩn x, thiết lập hàm T(x)")
-        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [✓]", "Đạo hàm: T'(x) = 0")
-        draw_logic_step_box(ann, x, y_start + 850, "+0,25đ [✓]", "Đưa về đúng phương trình bậc 2")
-        draw_logic_step_box(ann, x, y_start + 1200, "0,00đ [✗]", "Chưa bấm nghiệm / chưa kết luận", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đặt ẩn x, thiết lập hàm T(x)")
+        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [Đúng]", "Đạo hàm: T'(x) = 0")
+        draw_logic_step_box(ann, x, y_start + 850, "+0,25đ [Đúng]", "Đưa về đúng phương trình bậc 2")
+        draw_logic_step_box(ann, x, y_start + 1200, "0,00đ [Sai]", "Chưa bấm nghiệm / chưa kết luận", is_correct=False)
         draw_question_total(ann, x, y_start + 1350, f"TỔNG C21: {c21_sc:.2f} / 1,00đ")
     elif c21_sc == 0.5:
-        draw_logic_step_box(ann, x, y_start, "+0,25đ [✓]", "Đặt ẩn x, thiết lập hàm T(x)")
-        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [✓]", "Đạo hàm: T'(x) = 0")
-        draw_logic_step_box(ann, x, y_start + 800, "0,00đ [✗]", "Chưa giải phương trình tìm x", is_correct=False)
-        draw_logic_step_box(ann, x, y_start + 1200, "0,00đ [✗]", "Thiếu BBT chứng minh GTNN", is_correct=False)
+        draw_logic_step_box(ann, x, y_start, "+0,25đ [Đúng]", "Đặt ẩn x, thiết lập hàm T(x)")
+        draw_logic_step_box(ann, x, y_start + 350, "+0,25đ [Đúng]", "Đạo hàm: T'(x) = 0")
+        draw_logic_step_box(ann, x, y_start + 800, "0,00đ [Sai]", "Chưa giải phương trình tìm x", is_correct=False)
+        draw_logic_step_box(ann, x, y_start + 1200, "0,00đ [Sai]", "Thiếu BBT chứng minh GTNN", is_correct=False)
         draw_question_total(ann, x, y_start + 1350, f"TỔNG C21: {c21_sc:.2f} / 1,00đ")
     else:
         draw_question_total(ann, x, y_start + 500, "TỔNG C21: 0,00đ (Chưa làm)")
@@ -566,7 +566,28 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
             draw_c20_logic(ann, x=2400, y_start=680, c20_sc=c20_sc)
             draw_c21_logic(ann, x=2400, y_start=2180, c21_sc=c21_sc, is_stt27=True)
 
-    # 2. TRƯỜNG HỢP ĐẶC THÙ: STT 1 (ĐÀO DUY KHÁNH)
+    # 2. TRƯỜNG HỢP ĐẶC THÙ: STT 2 (ĐOÀN PHƯƠNG ĐỨC - 1 TỜ DUY NHẤT GỒM CẢ C19 VÀ C21)
+    elif stt == 2:
+        ann.draw_text((130, 105), f"BÀI TỰ LUẬN (CÂU 19 & CÂU 21) - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '104')}", size=40, color_bgr=(0, 0, 180), bold=True)
+        ann.draw_text((130, 180), f"Câu 19: {c19_sc:.2f} / 1,00đ [TUYỆT ĐỐI]   |   Câu 21: {c21_sc:.2f} / 1,00đ", size=36, color_bgr=(0, 0, 255), bold=True)
+        ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
+        ann.draw_text((130, 410), "[Nhận xét logic]: C19 giải hệ chuẩn; C21 thiết lập hàm và đạo hàm đúng, chưa bấm nghiệm x.", size=28, color_bgr=(0, 0, 255), bold=True)
+
+        x_box = 2380
+        # C19 dóng thẳng hàng chữ viết thực tế của học sinh
+        draw_logic_step_box(ann, x_box, 1500, "+0,25đ [Đúng]", "Tiệm cận xiên: y = x/m + b/m => m=3")
+        draw_logic_step_box(ann, x_box, 1730, "+0,25đ [Đúng]", "Hệ pt qua A, B: -b+c=-4, 3b+c=0")
+        draw_logic_step_box(ann, x_box, 1960, "+0,25đ [Đúng]", "Giải hệ tìm: b = 1, c = -3")
+        draw_question_total(ann, x_box, 2060, f"TỔNG C19: {c19_sc:.2f} / 1,00đ")
+
+        # C21 dóng thẳng hàng chữ viết thực tế của học sinh
+        draw_logic_step_box(ann, x_box, 2640, "+0,25đ [Đúng]", "Đặt ẩn x, thiết lập hàm T(x)")
+        draw_logic_step_box(ann, x_box, 3030, "+0,25đ [Đúng]", "Đạo hàm: T'(x) = 0")
+        draw_logic_step_box(ann, x_box, 3500, "+0,25đ [Đúng]", "Quy đồng đưa về pt 13,75x² = 8100")
+        draw_logic_step_box(ann, x_box, 3750, "0,00đ [Sai]", "Chưa bấm nghiệm x / chưa kết luận", is_correct=False)
+        draw_question_total(ann, x_box, 3870, f"TỔNG C21: {c21_sc:.2f} / 1,00đ")
+
+    # 3. TRƯỜNG HỢP ĐẶC THÙ: STT 1 (ĐÀO DUY KHÁNH)
     elif stt == 1:
         if page_idx == 1:
             ann.draw_text((130, 105), f"BÀI TỰ LUẬN (TRANG 1 - CÂU 21) - {name} (LỚP {sclass})", size=42, color_bgr=(0, 0, 180), bold=True)
@@ -661,6 +682,14 @@ STUDENT_OMR_MAP = {
     43: "IMG20261109183222.jpg", # Đào Thanh Tùng (101)
 }
 
+def parse_img_time(fn):
+    s = fn.replace('IMG', '').replace('.jpg', '')
+    try:
+        from datetime import datetime
+        return datetime.strptime(s, '%Y%m%d%H%M%S')
+    except:
+        return None
+
 def run_batch():
     students = cham_diem_core.STUDENT_RESULTS
     print(f"Bắt đầu xuất bản bộ ảnh đã chấm cho {len(students)} học sinh...")
@@ -686,15 +715,31 @@ def run_batch():
 
                 # 2. Chấm Tự Luận mực đỏ
                 try:
+                    omr_t = parse_img_time(omr_file)
                     f_idx = all_basenames.index(omr_file)
                     adjacent = []
-                    for offset in [-1, 1, 2]:
+                    # Tìm các ảnh tự luận được chụp ngay sau phiếu trắc nghiệm (trong 120s) và trước HS tiếp theo
+                    for offset in range(1, 10):
                         check_idx = f_idx + offset
-                        if 0 <= check_idx < len(all_basenames):
-                            cand_name = all_basenames[check_idx]
-                            if cand_name not in STUDENT_OMR_MAP.values():
+                        if check_idx >= len(all_basenames):
+                            break
+                        cand_name = all_basenames[check_idx]
+                        if cand_name in STUDENT_OMR_MAP.values():
+                            break
+                        cand_t = parse_img_time(cand_name)
+                        if cand_t and omr_t:
+                            diff = (cand_t - omr_t).total_seconds()
+                            if 0 < diff <= 120:
                                 adjacent.append(cand_name)
-                    
+
+                    if len(adjacent) == 1:
+                        # Dọn dẹp file cũ nếu trước đó từng bị chia nhầm thành Trang1 / Trang2
+                        for obsolete in glob.glob(os.path.join(OUT_DIR, f"{stt:02d}_{name_clean}_{code}_TL_Trang*_DaCham.jpg")):
+                            try:
+                                os.remove(obsolete)
+                            except:
+                                pass
+
                     for p_i, tl_f in enumerate(adjacent[:2]):
                         tl_path = os.path.join(IMG_DIR, tl_f)
                         suffix = f"_TL_Trang{p_i+1}" if len(adjacent) > 1 else "_TL"

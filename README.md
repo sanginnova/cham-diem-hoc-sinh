@@ -61,3 +61,4 @@ python tao_bo_anh_da_cham.py
 
 ## ⚖️ BẢN QUYỀN
 Hệ thống được thiết kế và phát triển bởi **ThS. Nguyễn Văn Sang** - Khoa Cơ bản - Trường Cao đẳng Nghề số 1 - BQP.
+

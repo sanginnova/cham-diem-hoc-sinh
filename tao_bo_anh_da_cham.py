@@ -587,7 +587,30 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
         draw_logic_step_box(ann, x_box, 3750, "0,00đ [Sai]", "Chưa bấm nghiệm x / chưa kết luận", is_correct=False)
         draw_question_total(ann, x_box, 3870, f"TỔNG C21: {c21_sc:.2f} / 1,00đ")
 
-    # 3. TRƯỜNG HỢP ĐẶC THÙ: STT 1 (ĐÀO DUY KHÁNH)
+    # 3. TRƯỜNG HỢP ĐẶC THÙ: STT 9 (NGUYỄN QUANG ĐỨC - C19 SAI DÒNG 1 NÊN 0đ, C20 ĐÚNG, C21 CHƯA LÀM)
+    elif stt == 9:
+        ann.draw_text((130, 105), f"BÀI TỰ LUẬN - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '102')}", size=40, color_bgr=(0, 0, 180), bold=True)
+        ann.draw_text((130, 180), "Câu 19: 0,00/1,0đ [SAI BẢN CHẤT]   |   Câu 20: 1,00/1,0đ   |   Câu 21: 0,00/1,0đ", size=34, color_bgr=(0, 0, 255), bold=True)
+        ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=36, color_bgr=(0, 0, 220), bold=True)
+        ann.draw_text((130, 410), "[Nhận xét logic]: C19 sai dạng hàm số & TCX từ dòng đầu -> 0đ; C20 làm tốt (1.0đ); C21 chưa làm.", size=27, color_bgr=(0, 0, 255), bold=True)
+
+        x_box = 2380
+        # C19 dóng hàng sai
+        draw_logic_step_box(ann, x_box, 980, "0,00đ [Sai]", "Viết sai dạng hàm số & chia sai TCX", is_correct=False)
+        draw_logic_step_box(ann, x_box, 1350, "0,00đ [Sai]", "Ngụy biện ép phương trình điểm B", is_correct=False)
+        draw_question_total(ann, x_box, 1530, "TỔNG C19: 0,00 / 1,00đ", color=(0, 0, 255))
+
+        # C20 dóng hàng đúng 4 bước
+        draw_logic_step_box(ann, x_box, 1780, "+0,25đ [Đúng]", "Đạo hàm: v(t) = s'(t) = -t² + 8t + 9")
+        draw_logic_step_box(ann, x_box, 2020, "+0,25đ [Đúng]", "v'(t) = -2t + 8 = 0 => t = 4s")
+        draw_logic_step_box(ann, x_box, 2320, "+0,25đ [Đúng]", "Tính v(4) = 25 m/s, v(0)=9, v(10)=-11")
+        draw_logic_step_box(ann, x_box, 2620, "+0,25đ [Đúng]", "Kết luận: vmax = 25 m/s tại t = 4s")
+        draw_question_total(ann, x_box, 2760, "TỔNG C20: 1,00 / 1,00đ")
+
+        # C21 bỏ dở
+        draw_question_total(ann, x_box, 3050, "TỔNG C21: 0,00 / 1,00đ (Chưa làm)", color=(100, 100, 100))
+
+    # 4. TRƯỜNG HỢP ĐẶC THÙ: STT 1 (ĐÀO DUY KHÁNH)
     elif stt == 1:
         if page_idx == 1:
             ann.draw_text((130, 105), f"BÀI TỰ LUẬN (TRANG 1 - CÂU 21) - {name} (LỚP {sclass})", size=42, color_bgr=(0, 0, 180), bold=True)
@@ -748,7 +771,16 @@ def run_batch():
                             if 0 < diff <= 120:
                                 bwd.append(cand_name)
 
-                    adjacent = fwd if len(fwd) > 0 else list(reversed(bwd))
+                    # Bảng định tuyến tờ bài thi chuẩn xác 100% cho các trường hợp đặc biệt
+                    STUDENT_ESSAY_OVERRIDE = {
+                        9: ["IMG20261109183337.jpg"],
+                        39: ["IMG20261109183343.jpg"],
+                    }
+
+                    if stt in STUDENT_ESSAY_OVERRIDE:
+                        adjacent = STUDENT_ESSAY_OVERRIDE[stt]
+                    else:
+                        adjacent = fwd if len(fwd) > 0 else list(reversed(bwd))
 
                     if len(adjacent) == 1:
                         # Dọn dẹp file cũ nếu trước đó từng bị chia nhầm thành Trang1 / Trang2

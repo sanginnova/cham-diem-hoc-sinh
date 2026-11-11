@@ -573,8 +573,80 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
     # Nhận xét logic của GV
     ann.draw_rect([(100, 380), (2350, 480)], fill_bgr=(240, 240, 255), outline_bgr=(0, 0, 255), width=2)
 
+    # 0. TRƯỜNG HỢP ĐẶC THÙ: STT 4 (NGUYỄN MẠNH THẮNG - ĐOẠN ĐẦU C19 GẠCH CHÉO BỎ THÌ TUYỆT ĐỐI KHÔNG CHẤM)
+    if stt == 4:
+        x_box = 2480
+        if page_idx == 1:
+            ann.draw_text((130, 105), f"BÀI TỰ LUẬN (TRANG 1 - CÂU 19) - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '103')}", size=40, color_bgr=(0, 0, 180), bold=True)
+            ann.draw_text((130, 180), f"Câu 19: {c19_sc:.2f} / 1,00đ   |   Câu 20: {c20_sc:.2f} / 1,00đ   |   Câu 21: {c21_sc:.2f} / 1,00đ", size=36, color_bgr=(0, 0, 255), bold=True)
+            ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
+            ann.draw_text((130, 410), "[Nhận xét logic]: Đoạn đầu C19 học sinh gạch chéo bỏ -> Tuyệt đối không chấm; C19 làm lại xem tiếp ở Trang 2.", size=27, color_bgr=(0, 0, 255), bold=True)
+
+            # TUYỆT ĐỐI KHÔNG CHẤM ĐOẠN HỌC SINH ĐÃ GẠCH CHÉO BỎ (y từ 800 đến 2100)
+            # Chỉ ghi chú nhẹ màu xám ở mép ngoài cùng để Thầy và trò cùng rõ:
+            ann.draw_text((2460, 1400), "[GẠCH BỎ]", size=30, color_bgr=(160, 160, 160), bold=True)
+            ann.draw_text((2460, 1450), "Không chấm", size=24, color_bgr=(160, 160, 160), bold=True)
+
+            # PHẦN HỌC SINH LÀM LẠI CÂU 19 (từ y = 2200 trở đi)
+            # Dòng viết sai phép chia đa thức:
+            ann.highlight_yellow([(180, 2300), (1350, 2400)], alpha=0.40)
+            # Dòng viết nhầm b+c = -4:
+            ann.highlight_yellow([(800, 3200), (1600, 3300)], alpha=0.40)
+
+            draw_logic_step_box(ann, x_box, 2800, "+0,25đ") # Hệ số góc 1/m = 1/3 => m = 3
+            draw_logic_step_box(ann, x_box, 3250, "0,00đ", is_correct=False) # Nhầm dấu phương trình điểm A
+            draw_logic_step_box(ann, x_box, 3650, "+0,25đ") # Phương trình điểm B: 3b+c = 0
+            ann.draw_text((x_box - 20, 3850), "(Xem tiếp Trang 2)", size=26, color_bgr=(0, 0, 200), bold=True)
+        else:
+            # Trang 2 của Nguyễn Mạnh Thắng
+            ann.draw_text((130, 105), f"BÀI TỰ LUẬN (TRANG 2 - CÂU 19 & CÂU 20) - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '103')}", size=40, color_bgr=(0, 0, 180), bold=True)
+            ann.draw_text((130, 180), f"Câu 19: {c19_sc:.2f} / 1,00đ   |   Câu 20: {c20_sc:.2f} / 1,00đ   |   Câu 21: {c21_sc:.2f} / 1,00đ", size=36, color_bgr=(0, 0, 255), bold=True)
+            ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
+            ann.draw_text((130, 410), "[Nhận xét logic]: C19 giải đúng hệ b=1, c=-3; C20 tìm ra thời điểm t=4s (0,75đ), thiếu bước tính vmax=25m/s.", size=27, color_bgr=(0, 0, 255), bold=True)
+
+            # C19 đoạn kết quả hệ (dóng đúng tọa độ thực tế dòng kẻ)
+            draw_logic_step_box(ann, x_box, 1550, "+0,50đ")
+            draw_question_total(ann, x_box, 1950, f"[ C19: {c19_sc:.2f}đ ]")
+
+            # C20 dóng hàng chữ viết học sinh thực tế
+            draw_logic_step_box(ann, x_box, 2350, "+0,25đ") # Đạo hàm v(t) = s'(t) = -t^2 + 8t + 9
+            draw_logic_step_box(ann, x_box, 2650, "+0,25đ") # v'(t) = -2t + 8 = 0 => t = 4s
+            draw_logic_step_box(ann, x_box, 2950, "+0,25đ") # Lập luận v'(t) đổi dấu => đạt GTLN tại t = 4s
+            draw_logic_step_box(ann, x_box, 3150, "0,00đ", is_correct=False) # Thiếu bước tính giá trị vmax = 25 m/s
+            draw_question_total(ann, x_box, 3300, f"[ C20: {c20_sc:.2f}đ ]")
+
+            # C21 chưa làm
+            draw_question_total(ann, x_box, 3550, "[ C21: 0,00đ ]", color=(100, 100, 100))
+
+    # 0.1 TRƯỜNG HỢP ĐẶC THÙ: STT 11 (CAO THỊ THẢO NGUYÊN - 1 TRANG DUY NHẤT)
+    elif stt == 11:
+        x_box = 2480
+        # Bôi dạ quang vàng vào chỗ sai dấu hệ số góc: 1/m = -1/3 => m = -3
+        ann.highlight_yellow([(800, 1400), (1800, 1500)], alpha=0.40)
+        # Bôi dạ quang vàng vào đoạn nhầm sang xét chiều chuyển động của Câu 20
+        ann.highlight_yellow([(200, 3000), (2200, 3350)], alpha=0.40)
+
+        ann.draw_text((130, 105), f"BÀI TỰ LUẬN - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '103')}", size=40, color_bgr=(0, 0, 180), bold=True)
+        ann.draw_text((130, 180), f"Câu 19: {c19_sc:.2f} / 1,00đ   |   Câu 20: {c20_sc:.2f} / 1,00đ   |   Câu 21: {c21_sc:.2f} / 1,00đ", size=36, color_bgr=(0, 0, 255), bold=True)
+        ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
+        ann.draw_text((130, 410), "[Nhận xét logic]: C19 viết đúng dạng TCX nhưng nhầm dấu hệ số góc (-1/3); C20 nhầm sang xét chiều chuyển động.", size=27, color_bgr=(0, 0, 255), bold=True)
+
+        # C19 dóng hàng
+        draw_logic_step_box(ann, x_box, 1150, "+0,25đ") # Dạng TCX y = x/m + b/m
+        draw_logic_step_box(ann, x_box, 1450, "0,00đ", is_correct=False) # Nhầm dấu hệ số góc
+        draw_logic_step_box(ann, x_box, 1850, "0,00đ", is_correct=False) # Kéo theo hệ sai
+        draw_question_total(ann, x_box, 2350, f"[ C19: {c19_sc:.2f}đ ]")
+
+        # C20 dóng hàng
+        draw_logic_step_box(ann, x_box, 2650, "+0,25đ") # Đạo hàm v(t) = s'(t) = -t^2 + 8t + 9
+        draw_logic_step_box(ann, x_box, 3050, "0,00đ", is_correct=False) # Nhầm sang xét chiều chuyển động
+        draw_question_total(ann, x_box, 3450, f"[ C20: {c20_sc:.2f}đ ]")
+
+        # C21 chưa làm
+        draw_question_total(ann, x_box, 3700, "[ C21: 0,00đ ]", color=(100, 100, 100))
+
     # 1. TRƯỜNG HỢP ĐẶC THÙ: STT 27 (BẾ NGỌC THÀNH)
-    if stt == 27:
+    elif stt == 27:
         if page_idx == 1:
             ann.draw_text((130, 105), f"BÀI TỰ LUẬN (TRANG 1 - CÂU 19) - {name} (LỚP {sclass})", size=42, color_bgr=(0, 0, 180), bold=True)
             ann.draw_text((130, 180), f"Câu 19 (Tìm hệ số hàm số): {c19_sc:.2f} / 1,00 điểm [TUYỆT ĐỐI]", size=36, color_bgr=(0, 0, 255), bold=True)
@@ -814,8 +886,10 @@ def run_batch():
 
                     # Bảng định tuyến tờ bài thi chuẩn xác 100% cho các trường hợp đặc biệt
                     STUDENT_ESSAY_OVERRIDE = {
-                        9: ["IMG20261109183337.jpg"],
-                        39: ["IMG20261109183343.jpg"],
+                        4: ["IMG20261107114735.jpg", "IMG20261107114759.jpg"], # Nguyễn Mạnh Thắng: Trang 1 gạch bỏ đoạn đầu C19 & làm lại C19; Trang 2 tiếp C19 & làm C20
+                        9: ["IMG20261109183337.jpg"], # Nguyễn Quang Đức (1 trang duy nhất)
+                        11: ["IMG20261107114723.jpg"], # Cao Thị Thảo Nguyên (1 trang duy nhất)
+                        39: ["IMG20261109183343.jpg"], # Ngô Thế Anh (1 trang duy nhất)
                     }
 
                     if stt in STUDENT_ESSAY_OVERRIDE:

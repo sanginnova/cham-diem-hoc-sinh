@@ -51,6 +51,12 @@ class VietnameseAnnotator:
         outline_rgb = (outline_bgr[2], outline_bgr[1], outline_bgr[0]) if outline_bgr is not None else None
         self.draw.rectangle(box, fill=fill_rgb, outline=outline_rgb, width=width)
 
+    def draw_cross_red(self, box, color_bgr=(0, 0, 220), width=5):
+        color_rgb = (color_bgr[2], color_bgr[1], color_bgr[0])
+        (x1, y1), (x2, y2) = box
+        self.draw.line([(x1, y1), (x2, y2)], fill=color_rgb, width=width)
+        self.draw.line([(x1, y2), (x2, y1)], fill=color_rgb, width=width)
+
     def highlight_yellow(self, box, alpha=0.40):
         """
         Tô dạ quang màu vàng trong suốt (Yellow Highlighter) lên đúng dòng/chỗ viết bị lỗi sai.
@@ -604,8 +610,10 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
             ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
             ann.draw_text((130, 410), "[Nhận xét logic]: C19 giải đúng hệ b=1, c=-3; C20 tìm ra thời điểm t=4s (0,75đ), thiếu bước tính vmax=25m/s.", size=27, color_bgr=(0, 0, 255), bold=True)
 
-            # C19 đoạn kết quả hệ (dóng đúng tọa độ thực tế dòng kẻ)
-            draw_logic_step_box(ann, x_box, 1550, "+0,50đ")
+            # C19 đoạn kết quả hệ (bước trước lập sai pt điểm A -> không tính điểm bước giải hệ dù đúng đáp số)
+            ann.highlight_yellow([(200, 1500), (2200, 1950)], alpha=0.35)
+            draw_logic_step_box(ann, x_box, 1550, "0,00đ", is_correct=False)
+            ann.draw_text((x_box - 280, 1620), "(Bước trước sai -> 0đ)", size=24, color_bgr=(0, 0, 255), bold=True)
             draw_question_total(ann, x_box, 1950, f"[ C19: {c19_sc:.2f}đ ]")
 
             # C20 dóng hàng chữ viết học sinh thực tế
@@ -637,10 +645,11 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
         draw_logic_step_box(ann, x_box, 1850, "0,00đ", is_correct=False) # Kéo theo hệ sai
         draw_question_total(ann, x_box, 2350, f"[ C19: {c19_sc:.2f}đ ]")
 
-        # C20 dóng hàng
-        draw_logic_step_box(ann, x_box, 2650, "+0,25đ") # Đạo hàm v(t) = s'(t) = -t^2 + 8t + 9
-        draw_logic_step_box(ann, x_box, 3050, "0,00đ", is_correct=False) # Nhầm sang xét chiều chuyển động
-        draw_question_total(ann, x_box, 3450, f"[ C20: {c20_sc:.2f}đ ]")
+        # C20 hiểu sai bản chất bài toán -> Gạch chéo đỏ toàn bộ câu
+        ann.draw_cross_red([(100, 2550), (2400, 3450)], color_bgr=(0, 0, 220), width=6)
+        draw_logic_step_box(ann, x_box, 2950, "0,00đ", is_correct=False)
+        ann.draw_text((x_box - 220, 3020), "(Sai bản chất đề)", size=24, color_bgr=(0, 0, 255), bold=True)
+        draw_question_total(ann, x_box, 3450, f"[ C20: {c20_sc:.2f}đ ]", color=(0, 0, 255))
 
         # C21 chưa làm
         draw_question_total(ann, x_box, 3700, "[ C21: 0,00đ ]", color=(100, 100, 100))

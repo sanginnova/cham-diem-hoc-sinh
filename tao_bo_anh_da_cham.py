@@ -438,21 +438,40 @@ def annotate_omr_sheet(img_path, student, out_path):
     
     return imwrite_unicode(out_path, ann.to_bgr())
 
-def draw_logic_step_box(ann, x, y, score_str, note_str, is_correct=True):
-    border_color = (0, 0, 220) if is_correct else (0, 0, 255)
-    bg_color = (255, 255, 255) if is_correct else (240, 240, 255)
-    box_w = 620
-    box_h = 100
-    ann.draw_rect([(x, y - 50), (x + box_w, y + box_h - 50)], fill_bgr=bg_color, outline_bgr=border_color, width=3)
-    ann.draw_text((x + 15, y - 40), score_str, size=32, color_bgr=border_color, bold=True)
-    note_color = (40, 40, 40) if is_correct else (0, 0, 220)
-    ann.draw_text((x + 15, y + 5), note_str, size=22, color_bgr=note_color, bold=True)
+def draw_logic_step_box(ann, x, y, score_str, note_str="", is_correct=True):
+    # PHƯƠNG ÁN A (CHUẨN SƯ PHẠM NHƯ THẦY CHẤM TAY THẬT):
+    # - Tuyệt đối không vẽ hộp chữ nhật to màu trắng che lề vở.
+    # - Tuyệt đối không in dòng text barem giải thích dài dòng bên phải.
+    # - Chỉ ghi đúng điểm số mực đỏ (+0,25đ hoặc 0,00đ) thanh thoát, tự nhiên, dóng thẳng hàng chữ viết học sinh.
+    clean_score = score_str.split()[0] if score_str else "+0,25đ"
+    if "0,00" in score_str or "0đ" in score_str or not is_correct:
+        color = (0, 0, 255) # Đỏ cờ cho điểm 0
+        clean_score = "0,00đ"
+    else:
+        color = (0, 0, 220) # Đỏ tươi cho điểm cộng
+        if not clean_score.startswith("+") and not clean_score.startswith("0"):
+            clean_score = "+" + clean_score
+    
+    ann.draw_text((x, y - 20), clean_score, size=38, color_bgr=color, bold=True)
 
 def draw_question_total(ann, x, y, q_str, color=(0, 0, 220)):
-    box_w = 620
-    box_h = 80
-    ann.draw_rect([(x, y - 50), (x + box_w, y + box_h - 50)], fill_bgr=(230, 230, 255), outline_bgr=(0, 0, 255), width=4)
-    ann.draw_text((x + 20, y - 35), q_str, size=34, color_bgr=color, bold=True)
+    # Badge tổng điểm câu nhỏ gọn, tinh tế dạng con dấu Thầy giáo chấm: [ C19: 1,00đ ]
+    text_clean = q_str
+    if "TỔNG" in q_str:
+        parts = q_str.replace("TỔNG", "").strip().split(":")
+        if len(parts) >= 2:
+            q_name = parts[0].strip()
+            score_part = parts[1].split("/")[0].strip()
+            score_part = score_part.replace(".", ",")
+            if not score_part.endswith("đ"):
+                score_part += "đ"
+            text_clean = f"[ {q_name}: {score_part} ]"
+    elif not text_clean.startswith("["):
+        text_clean = f"[ {text_clean} ]"
+
+    badge_w = 260
+    ann.draw_rect([(x - 10, y - 30), (x + badge_w, y + 30)], fill_bgr=(242, 242, 255), outline_bgr=color, width=2)
+    ann.draw_text((x + 12, y - 18), text_clean, size=30, color_bgr=color, bold=True)
 
 def draw_c19_logic(ann, x=2400, y_start=1800, c19_sc=1.0):
     if c19_sc >= 1.0:

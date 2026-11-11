@@ -51,6 +51,18 @@ class VietnameseAnnotator:
         outline_rgb = (outline_bgr[2], outline_bgr[1], outline_bgr[0]) if outline_bgr is not None else None
         self.draw.rectangle(box, fill=fill_rgb, outline=outline_rgb, width=width)
 
+    def highlight_yellow(self, box, alpha=0.40):
+        """
+        Tô dạ quang màu vàng trong suốt (Yellow Highlighter) lên đúng dòng/chỗ viết bị lỗi sai.
+        box: [(x1, y1), (x2, y2)]
+        alpha: 0.40 (màu vàng neon rực rỡ, nét chữ học sinh bên dưới vẫn hiển thị rõ ràng 100%)
+        """
+        overlay = Image.new("RGBA", self.pil_img.size, (0, 0, 0, 0))
+        draw_ov = ImageDraw.Draw(overlay)
+        draw_ov.rectangle(box, fill=(255, 240, 0, int(alpha * 255)))
+        self.pil_img = Image.alpha_composite(self.pil_img.convert("RGBA"), overlay).convert("RGB")
+        self.draw = ImageDraw.Draw(self.pil_img)
+
     def to_bgr(self):
         return cv2.cvtColor(np.array(self.pil_img), cv2.COLOR_RGB2BGR)
 
@@ -558,6 +570,9 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
 
             draw_c19_logic(ann, x=2400, y_start=1950, c19_sc=c19_sc)
         else:
+            # Bôi dạ quang vàng vào dòng lỗi sai đại số của Bế Ngọc Thành
+            ann.highlight_yellow([(260, 2680), (1300, 2760)], alpha=0.40)
+
             ann.draw_text((130, 105), f"BÀI TỰ LUẬN (TRANG 2 - CÂU 20 & CÂU 21) - {name} (LỚP {sclass})", size=42, color_bgr=(0, 0, 180), bold=True)
             ann.draw_text((130, 180), f"Câu 20: {c20_sc:.2f} / 1,00đ   |   Câu 21: {c21_sc:.2f} / 1,00đ", size=36, color_bgr=(0, 0, 255), bold=True)
             ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
@@ -568,6 +583,9 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
 
     # 2. TRƯỜNG HỢP ĐẶC THÙ: STT 2 (ĐOÀN PHƯƠNG ĐỨC - 1 TỜ DUY NHẤT GỒM CẢ C19 VÀ C21)
     elif stt == 2:
+        # Bôi dạ quang vàng vào dòng dừng lại chưa bấm máy tính nghiệm x
+        ann.highlight_yellow([(260, 3690), (1100, 3760)], alpha=0.40)
+
         ann.draw_text((130, 105), f"BÀI TỰ LUẬN (CÂU 19 & CÂU 21) - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '104')}", size=40, color_bgr=(0, 0, 180), bold=True)
         ann.draw_text((130, 180), f"Câu 19: {c19_sc:.2f} / 1,00đ [TUYỆT ĐỐI]   |   Câu 21: {c21_sc:.2f} / 1,00đ", size=36, color_bgr=(0, 0, 255), bold=True)
         ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=38, color_bgr=(0, 0, 220), bold=True)
@@ -589,6 +607,10 @@ def annotate_essay_sheet(img_path, student, out_path, page_type="auto", page_idx
 
     # 3. TRƯỜNG HỢP ĐẶC THÙ: STT 9 (NGUYỄN QUANG ĐỨC - C19 SAI DÒNG 1 NÊN 0đ, C20 ĐÚNG, C21 CHƯA LÀM)
     elif stt == 9:
+        # Bôi dạ quang vàng vào 2 dòng lỗi sai chí mạng của học sinh
+        ann.highlight_yellow([(260, 940), (1150, 1020)], alpha=0.40) # Dòng sai dạng hàm số & chia sai TCX
+        ann.highlight_yellow([(260, 1310), (1350, 1380)], alpha=0.40) # Dòng ngụy biện ép phương trình điểm B
+
         ann.draw_text((130, 105), f"BÀI TỰ LUẬN - {name} (LỚP {sclass}) - MÃ ĐỀ {student.get('code', '102')}", size=40, color_bgr=(0, 0, 180), bold=True)
         ann.draw_text((130, 180), "Câu 19: 0,00/1,0đ [SAI BẢN CHẤT]   |   Câu 20: 1,00/1,0đ   |   Câu 21: 0,00/1,0đ", size=34, color_bgr=(0, 0, 255), bold=True)
         ann.draw_text((130, 255), f"TỔNG TỰ LUẬN: {total_tl:.2f}/3,00đ ==> TỔNG ĐIỂM: {total_all:.2f}/10,0đ [{rank.upper()}]", size=36, color_bgr=(0, 0, 220), bold=True)

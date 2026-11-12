@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.3 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v19.4 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">SmartOMR Camera</h1>
-            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.3 • Wide-FOV Camera</span>
+            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.4 • Global Fiducial Snap</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -1669,15 +1669,87 @@
         return { x: expX, y: expY, ok: false };
       }
 
-      // Stage 1: Find outer top-left, top-right, bottom-right corners; estimate rough bottom-left
-      const tlOut = findFiducialNear(REF_CORNERS.tl);
-      const trOut = findFiducialNear(REF_CORNERS.tr);
-      const brOut = findFiducialNear(REF_CORNERS.br);
-      const blRough = {
-        x: tlOut.x + (brOut.x - trOut.x),
-        y: brOut.y + (tlOut.y - trOut.y),
-        ok: tlOut.ok && trOut.ok && brOut.ok
-      };
+      // Stage 1: Global Fiducial Cluster Detection (zoom- & position-invariant)
+      const gRIn = Math.max(4, Math.round(0.007 * w));
+      const gROut = Math.max(9, Math.round(0.017 * w));
+      const gStep = Math.max(2, Math.round(w / 260));
+      const gCands = [];
+      const gxMin = Math.max(gROut + 1, Math.round(0.06 * w));
+      const gxMax = Math.min(w - gROut - 1, Math.round(0.96 * w));
+      const gyMin = Math.max(gROut + 1, Math.round(0.06 * h));
+      const gyMax = Math.min(h - gROut - 1, Math.round(0.95 * h));
+      const gInArea = (2 * gRIn) * (2 * gRIn);
+      const gOutArea = (2 * gROut) * (2 * gROut);
+
+      for (let y = gyMin; y <= gyMax; y += gStep) {
+        for (let x = gxMin; x <= gxMax; x += gStep) {
+          const inner = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
+          if (inner > 130) continue;
+          const outerAll = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
+          const ringMean = (outerAll * gOutArea - inner * gInArea) / (gOutArea - gInArea);
+          const contrast = ringMean - inner;
+          if (contrast < 38) continue;
+          // Reject long horizontal/vertical table borders
+          const topS = boxMean(x - gRIn, y - gROut, x + gRIn, y - gRIn - 1);
+          const botS = boxMean(x - gRIn, y + gRIn + 1, x + gRIn, y + gROut);
+          const lftS = boxMean(x - gROut, y - gRIn, x - gRIn - 1, y + gRIn);
+          const rgtS = boxMean(x + gRIn + 1, y - gRIn, x + gROut, y + gRIn);
+          if (Math.min(topS, botS, lftS, rgtS) - inner < 22) continue;
+          gCands.push({ sc: contrast, x, y });
+        }
+      }
+      gCands.sort((a, b) => b.sc - a.sc);
+      const gKept = [];
+      const minNmsD = gROut * 1.8;
+      for (const c of gCands) {
+        if (gKept.every(k => Math.hypot(c.x - k.x, c.y - k.y) > minNmsD)) {
+          gKept.push(c);
+        }
+      }
+      const gCluster = gKept.filter(c => {
+        let nbrs = 0;
+        for (const o of gKept) {
+          const d = Math.hypot(c.x - o.x, c.y - o.y);
+          if (d > 0 && d < 0.48 * w) nbrs++;
+        }
+        return nbrs >= 2;
+      });
+
+      let tlOut, trOut, blRough, brOut;
+      if (gCluster.length >= 8) {
+        const pickExtreme = fn => {
+          let best = gCluster[0], bestV = fn(gCluster[0]);
+          for (const p of gCluster) {
+            const v = fn(p);
+            if (v > bestV) { bestV = v; best = p; }
+          }
+          // 1px fine refinement around extreme corner
+          let fineBest = -1e9, fx = best.x, fy = best.y;
+          for (let y = Math.max(gROut + 1, best.y - gStep); y <= Math.min(h - gROut - 1, best.y + gStep); y++) {
+            for (let x = Math.max(gROut + 1, best.x - gStep); x <= Math.min(w - gROut - 1, best.x + gStep); x++) {
+              const inner = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
+              const outerAll = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
+              const ringMean = (outerAll * gOutArea - inner * gInArea) / (gOutArea - gInArea);
+              const sc = ringMean - inner;
+              if (sc > fineBest) { fineBest = sc; fx = x; fy = y; }
+            }
+          }
+          return { x: fx, y: fy, ok: true };
+        };
+        tlOut = pickExtreme(p => -(p.x + p.y));
+        trOut = pickExtreme(p => p.x - p.y);
+        blRough = pickExtreme(p => -(p.x - p.y));
+        brOut = pickExtreme(p => p.x + p.y);
+      } else {
+        tlOut = findFiducialNear(REF_CORNERS.tl);
+        trOut = findFiducialNear(REF_CORNERS.tr);
+        brOut = findFiducialNear(REF_CORNERS.br);
+        blRough = {
+          x: tlOut.x + (brOut.x - trOut.x),
+          y: brOut.y + (tlOut.y - trOut.y),
+          ok: tlOut.ok && trOut.ok && brOut.ok
+        };
+      }
 
       // Stage 2: Project 4 inner grid timing squares through rough homography and snap each one
       const REF_GRID_ANCHORS = [

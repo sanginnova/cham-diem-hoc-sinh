@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.4 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v19.5 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">SmartOMR Camera</h1>
-            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.4 • Global Fiducial Snap</span>
+            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.5 • Auto-Corner Glare Fix</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -1684,18 +1684,20 @@
       for (let y = gyMin; y <= gyMax; y += gStep) {
         for (let x = gxMin; x <= gxMax; x += gStep) {
           const inner = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
-          if (inner > 130) continue;
+          if (inner > 145) continue;
           const outerAll = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
           const ringMean = (outerAll * gOutArea - inner * gInArea) / (gOutArea - gInArea);
+          if (ringMean < 105) continue; // Reject dark desk / UI outside paper
           const contrast = ringMean - inner;
-          if (contrast < 38) continue;
-          // Reject long horizontal/vertical table borders
+          if (contrast < 32) continue;
+          // Reject long horizontal/vertical table borders: require >=1 bright side on both axes
           const topS = boxMean(x - gRIn, y - gROut, x + gRIn, y - gRIn - 1);
           const botS = boxMean(x - gRIn, y + gRIn + 1, x + gRIn, y + gROut);
           const lftS = boxMean(x - gROut, y - gRIn, x - gRIn - 1, y + gRIn);
           const rgtS = boxMean(x + gRIn + 1, y - gRIn, x + gROut, y + gRIn);
-          if (Math.min(topS, botS, lftS, rgtS) - inner < 22) continue;
-          gCands.push({ sc: contrast, x, y });
+          if (Math.max(topS, botS) - inner < 24 || Math.max(lftS, rgtS) - inner < 24) continue;
+          const fourSideMin = Math.min(topS, botS, lftS, rgtS) - inner;
+          gCands.push({ sc: contrast, x, y, fsm: fourSideMin });
         }
       }
       gCands.sort((a, b) => b.sc - a.sc);
@@ -1706,14 +1708,58 @@
           gKept.push(c);
         }
       }
-      const gCluster = gKept.filter(c => {
+      // Dense core: 4-side bright timing squares with >=3 neighbors within 0.24*w
+      const coreCands = gKept.filter(c => c.fsm >= 25);
+      let gCore = coreCands.filter(c => {
         let nbrs = 0;
-        for (const o of gKept) {
+        for (const o of coreCands) {
           const d = Math.hypot(c.x - o.x, c.y - o.y);
-          if (d > 0 && d < 0.48 * w) nbrs++;
+          if (d > 0 && d < 0.24 * w) nbrs++;
         }
-        return nbrs >= 2;
+        return nbrs >= 3;
       });
+      // Largest connected component of core
+      const linkD = 0.24 * w;
+      const visCore = new Uint8Array(gCore.length);
+      let bestCore = [];
+      for (let i = 0; i < gCore.length; i++) {
+        if (visCore[i]) continue;
+        const comp = [], stack = [i];
+        visCore[i] = 1;
+        while (stack.length) {
+          const u = stack.pop();
+          comp.push(gCore[u]);
+          for (let v = 0; v < gCore.length; v++) {
+            if (!visCore[v] && Math.hypot(gCore[u].x - gCore[v].x, gCore[u].y - gCore[v].y) <= linkD) {
+              visCore[v] = 1;
+              stack.push(v);
+            }
+          }
+        }
+        if (comp.length > bestCore.length) bestCore = comp;
+      }
+      gCore = bestCore;
+
+      let gCluster = gKept;
+      if (gCore.length >= 8) {
+        let cMinX = Infinity, cMaxX = -Infinity, cMinY = Infinity, cMaxY = -Infinity;
+        for (const c of gCore) {
+          if (c.x < cMinX) cMinX = c.x;
+          if (c.x > cMaxX) cMaxX = c.x;
+          if (c.y < cMinY) cMinY = c.y;
+          if (c.y > cMaxY) cMaxY = c.y;
+        }
+        const cW = Math.max(1, cMaxX - cMinX), cH = Math.max(1, cMaxY - cMinY);
+        const bx0 = cMinX - 0.12 * cW, bx1 = cMaxX + 0.12 * cW;
+        const by0 = cMinY - 0.24 * cH, by1 = cMaxY + 0.12 * cH;
+        const coreSet = new Set(gCore);
+        gCluster = [...gCore];
+        for (const p of gKept) {
+          if (!coreSet.has(p) && p.x >= bx0 && p.x <= bx1 && p.y >= by0 && p.y <= by1) {
+            gCluster.push(p);
+          }
+        }
+      }
 
       let tlOut, trOut, blRough, brOut;
       if (gCluster.length >= 8) {
@@ -1740,6 +1786,52 @@
         trOut = pickExtreme(p => p.x - p.y);
         blRough = pickExtreme(p => -(p.x - p.y));
         brOut = pickExtreme(p => p.x + p.y);
+
+        // Parallelogram consistency guard: if 1 corner is missing/occluded, repair via local_snap around parallelogram prediction
+        const localSnapCorner = (px, py) => {
+          const rad = Math.round(0.06 * w);
+          let bSc = -1e9, bX = Math.round(px), bY = Math.round(py);
+          for (let yy = Math.max(gROut + 1, Math.round(py - rad)); yy <= Math.min(h - gROut - 1, Math.round(py + rad)); yy += 2) {
+            for (let xx = Math.max(gROut + 1, Math.round(px - rad)); xx <= Math.min(w - gROut - 1, Math.round(px + rad)); xx += 2) {
+              const inn = boxMean(xx - gRIn, yy - gRIn, xx + gRIn, yy + gRIn);
+              if (inn > 165) continue;
+              const outA = boxMean(xx - gROut, yy - gROut, xx + gROut, yy + gROut);
+              const sc = (outA * gOutArea - inn * gInArea) / (gOutArea - gInArea) - inn;
+              if (sc > bSc) { bSc = sc; bX = xx; bY = yy; }
+            }
+          }
+          return bSc >= 20 ? { x: bX, y: bY, ok: true, sc: bSc } : { x: Math.round(px), y: Math.round(py), ok: true, sc: 0 };
+        };
+        const quadAr = (a, b, c, d) => {
+          const wt = Math.hypot(b.x - a.x, b.y - a.y);
+          const wb = Math.hypot(d.x - c.x, d.y - c.y);
+          const hl = Math.hypot(c.x - a.x, c.y - a.y);
+          const hr = Math.hypot(d.x - b.x, d.y - b.y);
+          if (Math.min(wt, wb) < 0.25 * w) return 0;
+          return (hl + hr) / (wt + wb);
+        };
+        const pTL = { x: trOut.x + blRough.x - brOut.x, y: trOut.y + blRough.y - brOut.y };
+        if (Math.hypot(tlOut.x - pTL.x, tlOut.y - pTL.y) > 0.08 * w) {
+          const repairs = [
+            ['tl', localSnapCorner(pTL.x, pTL.y)],
+            ['tr', localSnapCorner(tlOut.x + brOut.x - blRough.x, tlOut.y + brOut.y - blRough.y)],
+            ['bl', localSnapCorner(tlOut.x + brOut.x - trOut.x, tlOut.y + brOut.y - trOut.y)],
+            ['br', localSnapCorner(trOut.x + blRough.x - tlOut.x, trOut.y + blRough.y - tlOut.y)],
+          ];
+          let bestK = null, bestPt = null, bestScore = -1e9;
+          for (const [k, pt] of repairs) {
+            const q = { tl: tlOut, tr: trOut, bl: blRough, br: brOut, [k]: pt };
+            const ar = quadAr(q.tl, q.tr, q.bl, q.br);
+            if (ar >= 1.15 && ar <= 1.75) {
+              const score = (pt.sc >= 20 ? 2.0 : 0.0) - Math.abs(ar - 1.46);
+              if (score > bestScore) { bestScore = score; bestK = k; bestPt = pt; }
+            }
+          }
+          if (bestK === 'tl') tlOut = bestPt;
+          else if (bestK === 'tr') trOut = bestPt;
+          else if (bestK === 'bl') blRough = bestPt;
+          else if (bestK === 'br') brOut = bestPt;
+        }
       } else {
         tlOut = findFiducialNear(REF_CORNERS.tl);
         trOut = findFiducialNear(REF_CORNERS.tr);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.3 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.4 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -85,7 +85,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.3</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.4</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -390,11 +390,24 @@
             </div>
           </div>
 
+          <!-- Zoomed Cropped Student Name Preview + OCR Status -->
+          <div id="nameCropPreviewWrap" class="hidden mb-2.5 bg-slate-950/90 border border-slate-800 rounded-xl p-2 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span id="nameOcrStatus" class="text-[11px] font-medium text-sky-300">Vùng Họ tên cắt từ phiếu:</span>
+              <button onclick="autoExtractStudentName(true)" class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] text-amber-300 border border-slate-700">Đọc lại tên</button>
+            </div>
+            <img id="nameCropPreviewImg" alt="Ảnh vùng Họ tên" class="w-full max-h-20 object-contain rounded-lg bg-white border border-slate-700" />
+          </div>
+
           <!-- Student Info Inputs & Save to Class Roster -->
           <div class="grid grid-cols-6 sm:grid-cols-12 gap-2 pt-2 border-t border-slate-800/80">
             <div class="col-span-4 sm:col-span-5">
               <label class="block text-[11px] text-slate-400 mb-1">Họ và tên thí sinh</label>
-              <input id="inpStudentName" type="text" value="Đào Duy Khánh" oninput="updateStudentHeader()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-sm sm:text-xs text-white focus:border-blue-500 focus:outline-none" />
+              <div class="flex items-center gap-1">
+                <input id="inpStudentName" type="text" list="studentNameSuggestions" value="Đào Duy Khánh" oninput="updateStudentHeader()" placeholder="Nhập / nói / tự đọc tên..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-sm sm:text-xs text-white focus:border-blue-500 focus:outline-none" />
+                <button id="btnVoiceName" onclick="startVoiceNameInput()" title="Đọc tên học sinh bằng giọng nói" class="px-2.5 py-2 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs shrink-0">🎤</button>
+              </div>
+              <datalist id="studentNameSuggestions"></datalist>
             </div>
             <div class="col-span-2 sm:col-span-3">
               <label class="block text-[11px] text-slate-400 mb-1">Lớp</label>
@@ -651,6 +664,20 @@
             <button id="btnResetCalibration" onclick="resetCornerCalibration()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-amber-300 border border-slate-700">
               Khôi Phục Tọa Độ 4 Góc Mặc Định
             </button>
+          </div>
+        </div>
+
+        <!-- Student Name OCR & Class Roster Card -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3.5">
+          <h2 class="text-base font-bold text-white">Tự Động Đọc Tên Học Sinh (AI Vision / OCR + Danh Sách Lớp)</h2>
+          <p class="text-xs text-slate-400">Hệ thống tự động cắt vùng Họ tên phía trên Vùng Chấm để đọc bằng Gemini Vision (nếu nhập Key), hoặc OCR offline trên trình duyệt + đối chiếu gần đúng với Danh sách lớp.</p>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key (tùy chọn — đọc chữ viết tay tiếng Việt chuẩn ~99%)</label>
+            <input id="inpGeminiApiKey" type="password" placeholder="AIzaSy... (để trống nếu dùng OCR offline miễn phí)" oninput="saveNameRecognitionSettings()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono-code focus:border-emerald-500 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">Danh sách học sinh trong lớp (mỗi dòng 1 họ tên — dùng để chuẩn hóa dấu &amp; gợi ý nhanh)</label>
+            <textarea id="txtClassRosterList" rows="5" oninput="saveNameRecognitionSettings()" placeholder="Đào Duy Khánh&#10;Nguyễn Tiến Đạt&#10;Nguyễn Mạnh Thắng&#10;..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"></textarea>
           </div>
         </div>
 
@@ -2415,6 +2442,7 @@
         saveCurrentResultToRoster(true);
         playScanCompleteBeep(okCount);
         setFullScreenCalibrationUI(okCount < 4);
+        autoExtractStudentName(false);
         showToast(
           okCount === 4
             ? `Đã tự lưu (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ) — chuẩn 4/4 góc!`
@@ -2456,6 +2484,7 @@
           saveCurrentResultToRoster(true);
           playScanCompleteBeep(okCount);
           setFullScreenCalibrationUI(okCount < 4);
+          autoExtractStudentName(false);
           showToast(
             okCount === 4
               ? `Đã nạp & tự lưu "${file.name}" (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ)!`
@@ -3256,6 +3285,283 @@
     }
 
     // =========================================================================
+    // 10.7 STUDENT NAME EXTRACTION (CROP + GEMINI VISION + TESSERACT + VOICE)
+    // =========================================================================
+    const DEFAULT_CLASS_ROSTER_TEXT = [
+      "Đào Duy Khánh",
+      "Đoàn Phương Đức",
+      "Nguyễn Trọng Hiếu",
+      "Nguyễn Mạnh Thắng",
+      "Nguyễn Tiến Đạt",
+      "Tạ Trí Vĩ",
+      "Nguyễn Minh Hiếu",
+      "Hoàng Mạnh Hùng"
+    ].join("\n");
+
+    function normalizeVi(s) {
+      return (s || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .replace(/Đ/g, "D")
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function levenshteinDist(a, b) {
+      const m = a.length, n = b.length;
+      if (!m) return n;
+      if (!n) return m;
+      const dp = Array.from({ length: m + 1 }, (_, i) => i);
+      for (let j = 1; j <= n; j++) {
+        let prev = dp[0];
+        dp[0] = j;
+        for (let i = 1; i <= m; i++) {
+          const tmp = dp[i];
+          dp[i] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[i], dp[i - 1]);
+          prev = tmp;
+        }
+      }
+      return dp[m];
+    }
+
+    function getClassRosterNames() {
+      const raw = (document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || DEFAULT_CLASS_ROSTER_TEXT);
+      return raw.split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    }
+
+    function refreshNameDatalist() {
+      const dl = document.getElementById("studentNameSuggestions");
+      if (!dl) return;
+      dl.innerHTML = getClassRosterNames().map(n => `<option value="${n.replace(/"/g, '&quot;')}"></option>`).join("");
+    }
+
+    function loadNameRecognitionSettings() {
+      try {
+        const k = localStorage.getItem("smartomr_gemini_key") || "";
+        const kInp = document.getElementById("inpGeminiApiKey");
+        if (kInp) kInp.value = k;
+
+        const savedList = localStorage.getItem("smartomr_class_list_v19");
+        const txt = document.getElementById("txtClassRosterList");
+        if (txt) txt.value = savedList !== null ? savedList : DEFAULT_CLASS_ROSTER_TEXT;
+      } catch (e) {}
+      refreshNameDatalist();
+    }
+
+    function saveNameRecognitionSettings() {
+      try {
+        const k = document.getElementById("inpGeminiApiKey")?.value?.trim() || "";
+        localStorage.setItem("smartomr_gemini_key", k);
+        const listText = document.getElementById("txtClassRosterList")?.value ?? "";
+        localStorage.setItem("smartomr_class_list_v19", listText);
+      } catch (e) {}
+      refreshNameDatalist();
+    }
+
+    function fuzzyMatchStudentName(rawText) {
+      const candidates = getClassRosterNames();
+      const normRaw = normalizeVi(rawText);
+      if (!normRaw || candidates.length === 0) return null;
+      const rawTokens = normRaw.split(" ").filter(t => t.length >= 2);
+      let bestName = null, bestScore = 0;
+
+      for (const cand of candidates) {
+        const normCand = normalizeVi(cand);
+        if (!normCand) continue;
+        if (normRaw.includes(normCand)) return { name: cand, score: 1.0 };
+        const candTokens = normCand.split(" ");
+        let tokenHits = 0;
+        for (const ct of candTokens) {
+          if (rawTokens.some(rt => rt === ct || (rt.length >= 3 && levenshteinDist(rt, ct) <= 1))) {
+            tokenHits++;
+          }
+        }
+        const tokenScore = tokenHits / candTokens.length;
+        const distScore = 1 - levenshteinDist(normRaw, normCand) / Math.max(normRaw.length, normCand.length, 1);
+        const score = Math.max(tokenScore * 0.95, distScore);
+        if (score > bestScore) { bestScore = score; bestName = cand; }
+      }
+      return bestScore >= 0.45 ? { name: bestName, score: bestScore } : null;
+    }
+
+    function cropNameRegionDataUrl() {
+      if (!currentSourceImage) return null;
+      const srcW = currentSourceImage.naturalWidth || currentSourceImage.width;
+      const srcH = currentSourceImage.naturalHeight || currentSourceImage.height;
+      const srcPts = [REF_CORNERS.tl, REF_CORNERS.tr, REF_CORNERS.bl, REF_CORNERS.br];
+      const dstPts = [appState.corners.tl, appState.corners.tr, appState.corners.bl, appState.corners.br];
+      const H = computeHomographyMatrix(srcPts, dstPts);
+      if (!H) return null;
+
+      // Draw source image onto offscreenCanvas to sample pixels
+      offscreenCanvas.width = srcW;
+      offscreenCanvas.height = srcH;
+      offscreenCtx.drawImage(currentSourceImage, 0, 0, srcW, srcH);
+      const srcData = offscreenCtx.getImageData(0, 0, srcW, srcH).data;
+
+      // Strip covering "2. Họ và tên thí sinh", "4. Lớp", and handwritten name above VÙNG CHẤM
+      const refX0 = 110, refX1 = 770, refY0 = 145, refY1 = 296;
+      const outW = 660, outH = 152;
+      const outCanvas = document.createElement("canvas");
+      outCanvas.width = outW;
+      outCanvas.height = outH;
+      const outCtx = outCanvas.getContext("2d");
+      const outImg = outCtx.createImageData(outW, outH);
+      const dst = outImg.data;
+
+      for (let oy = 0; oy < outH; oy++) {
+        const ry = refY0 + (oy / (outH - 1)) * (refY1 - refY0);
+        for (let ox = 0; ox < outW; ox++) {
+          const rx = refX0 + (ox / (outW - 1)) * (refX1 - refX0);
+          const den = H[6] * rx + H[7] * ry + 1.0;
+          const sx = Math.round((H[0] * rx + H[1] * ry + H[2]) / den);
+          const sy = Math.round((H[3] * rx + H[4] * ry + H[5]) / den);
+          const di = (oy * outW + ox) * 4;
+          if (sx >= 0 && sx < srcW && sy >= 0 && sy < srcH) {
+            const si = (sy * srcW + sx) * 4;
+            dst[di] = srcData[si];
+            dst[di + 1] = srcData[si + 1];
+            dst[di + 2] = srcData[si + 2];
+            dst[di + 3] = 255;
+          } else {
+            dst[di] = dst[di + 1] = dst[di + 2] = 255;
+            dst[di + 3] = 255;
+          }
+        }
+      }
+      outCtx.putImageData(outImg, 0, 0);
+      return outCanvas.toDataURL("image/jpeg", 0.88);
+    }
+
+    let _tesseractLoading = null;
+    function ensureTesseractLoaded() {
+      if (window.Tesseract) return Promise.resolve(window.Tesseract);
+      if (_tesseractLoading) return _tesseractLoading;
+      _tesseractLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+        s.onload = () => resolve(window.Tesseract);
+        s.onerror = () => reject(new Error("Không tải được Tesseract OCR"));
+        document.head.appendChild(s);
+      });
+      return _tesseractLoading;
+    }
+
+    async function autoExtractStudentName(manualRetry = false) {
+      const wrap = document.getElementById("nameCropPreviewWrap");
+      const imgEl = document.getElementById("nameCropPreviewImg");
+      const statusEl = document.getElementById("nameOcrStatus");
+      const cropUrl = cropNameRegionDataUrl();
+      if (!cropUrl) return;
+
+      if (wrap) wrap.classList.remove("hidden");
+      if (imgEl) imgEl.src = cropUrl;
+
+      const geminiKey = (localStorage.getItem("smartomr_gemini_key") || "").trim();
+      const applyDetectedName = (rawName, rawClass, sourceLabel) => {
+        const matched = fuzzyMatchStudentName(rawName);
+        const finalName = matched ? matched.name : (rawName || "").trim();
+        if (finalName) {
+          const nInp = document.getElementById("inpStudentName");
+          if (nInp) nInp.value = finalName;
+          if (rawClass && rawClass.trim()) {
+            const cInp = document.getElementById("inpStudentClass");
+            if (cInp) cInp.value = rawClass.trim();
+          }
+          updateStudentHeader();
+          if (statusEl) statusEl.textContent = `✓ ${sourceLabel}: ${finalName}`;
+        } else if (statusEl) {
+          statusEl.textContent = "Chưa đọc rõ chữ viết tay — nhìn ảnh trên hoặc bấm 🎤 để đọc!";
+        }
+      };
+
+      if (geminiKey) {
+        if (statusEl) statusEl.textContent = "⏳ Gemini Vision đang đọc Họ tên...";
+        try {
+          const b64 = cropUrl.split(",")[1];
+          const rosterHint = getClassRosterNames().slice(0, 60).join(", ");
+          const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { inline_data: { mime_type: "image/jpeg", data: b64 } },
+                    { text: `Đọc chính xác Họ và tên học sinh (chữ viết tay) và Lớp trong ảnh phiếu thi này. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON: {"name": "...", "className": "..."}` }
+                  ]
+                }],
+                generationConfig: { responseMimeType: "application/json", temperature: 0 }
+              })
+            }
+          );
+          const j = await resp.json();
+          const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+          const parsed = JSON.parse(txt);
+          applyDetectedName(parsed.name || "", parsed.className || "", "Gemini AI");
+          return;
+        } catch (e) {
+          if (manualRetry) showToast("Lỗi gọi Gemini API Key, chuyển sang OCR offline...", true);
+        }
+      }
+
+      // Fallback: Browser Offline OCR (Tesseract.js) + Fuzzy Match against Class List
+      if (statusEl) statusEl.textContent = "⏳ Đang đọc tên (OCR trình duyệt)...";
+      try {
+        const T = await ensureTesseractLoaded();
+        const result = await T.recognize(cropUrl, "vie");
+        const rawTxt = (result?.data?.text || "")
+          .replace(/Họ và tên thí sinh|Họ và tên|thí sinh|Hội đồng thi|Kỳ thi|Ngày thi|Phòng thi|Số báo danh|VÙNG CHẤM TRẮC NGHIỆM|Lớp/gi, " ")
+          .replace(/[0-9.:;_\-|/\\]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const matched = fuzzyMatchStudentName(rawTxt);
+        if (matched) {
+          applyDetectedName(matched.name, "", "OCR + Đối chiếu lớp");
+        } else {
+          // Pick longest plausible capitalized phrase (>= 2 words)
+          const clean = rawTxt.split(/\n/).map(x => x.trim()).find(x => x.split(" ").length >= 2 && x.length >= 5) || "";
+          applyDetectedName(clean, "", "OCR");
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = "Nhìn ảnh trên để gõ hoặc bấm 🎤 đọc tên!";
+      }
+    }
+
+    function startVoiceNameInput() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        showToast("Trình duyệt không hỗ trợ nhập giọng nói. Hãy gõ 2 chữ đầu để chọn nhanh!", true);
+        return;
+      }
+      const btn = document.getElementById("btnVoiceName");
+      const rec = new SR();
+      rec.lang = "vi-VN";
+      rec.interimResults = false;
+      rec.maxAlternatives = 3;
+      if (btn) btn.textContent = "🔴";
+      showToast("Đang nghe... Hãy đọc Họ tên học sinh!");
+      rec.onresult = evt => {
+        const spoken = evt.results?.[0]?.[0]?.transcript || "";
+        const matched = fuzzyMatchStudentName(spoken);
+        const finalName = matched ? matched.name : spoken.trim();
+        const nInp = document.getElementById("inpStudentName");
+        if (nInp && finalName) {
+          nInp.value = finalName;
+          updateStudentHeader();
+          showToast(`Đã nhận tên: "${finalName}"`);
+        }
+      };
+      rec.onerror = () => showToast("Không nghe rõ, thử bấm 🎤 lại!", true);
+      rec.onend = () => { if (btn) btn.textContent = "🎤"; };
+      rec.start();
+    }
+
+    // =========================================================================
     // 11. INITIALIZATION ON LOAD
     // =========================================================================
     window.addEventListener("load", () => {
@@ -3301,6 +3607,7 @@
       }
 
       initCanvasDragEvents();
+      loadNameRecognitionSettings();
       renderExamKeysTab();
       renderRosterTable();
 

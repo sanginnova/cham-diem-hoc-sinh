@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.5 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.6 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -90,7 +90,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.5</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.6</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -234,27 +234,8 @@
               </div>
             </div>
 
-            <!-- Center AR Target Box representing full A4 sheet (3:4 wide-FOV natural framing) -->
-            <div class="relative w-[92%] max-w-md aspect-[3/4] max-h-[70dvh] border-2 border-dashed border-emerald-400/75 rounded-xl shadow-[0_0_0_9999px_rgba(2,6,23,0.42)] flex flex-col justify-between p-2">
-              <!-- 4 Fiducial Corner Brackets -->
-              <div class="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-md"></div>
-              <div class="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-md"></div>
-              <div class="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-emerald-400 rounded-bl-md"></div>
-              <div class="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-emerald-400 rounded-br-md"></div>
-
-              <!-- Sub-section Guide Lines inside VÙNG CHẤM TRẮC NGHIỆM -->
-              <div class="w-full border-b border-emerald-400/30 pb-1 text-[10px] text-emerald-300/90 font-mono-code flex justify-between px-2 mt-12">
-                <span>ĐIỂM TL</span>
-                <span>MÃ ĐỀ</span>
-                <span>PHẦN I (ABCD)</span>
-              </div>
-              <div class="w-full border-b border-emerald-400/30 pb-1 text-[10px] text-emerald-300/90 font-mono-code px-2">
-                <span>PHẦN II (ĐÚNG / SAI - CÂU 13, 14)</span>
-              </div>
-              <div class="w-full text-[10px] text-emerald-300/90 font-mono-code px-2 mb-6">
-                <span>PHẦN III (ĐIỀN SỐ - CÂU 15, 16, 17, 18)</span>
-              </div>
-            </div>
+            <!-- Center Spacer (4 large alignment corner boxes are drawn live on #cameraOverlayCanvas) -->
+            <div class="flex-1"></div>
 
             <!-- Bottom Full-Screen Camera Shutter Controls -->
             <div class="pointer-events-auto w-full max-w-xl flex items-center justify-around gap-3 bg-slate-950/85 backdrop-blur-md px-5 py-3 rounded-3xl border border-slate-800 shadow-2xl">
@@ -2384,10 +2365,79 @@
           const wb = Math.hypot(br.x - bl.x, br.y - bl.y);
           const hl = Math.hypot(bl.x - tl.x, bl.y - tl.y);
           const hr = Math.hypot(br.x - tr.x, br.y - tr.y);
-          const ar = Math.min(wt, wb) > 0.22 * rw ? (hl + hr) / (wt + wb) : 0;
+          const ar = Math.min(wt, wb) > 0.20 * rw ? (hl + hr) / (wt + wb) : 0;
           const validGeo = res.okCount === 4 && ar >= 1.15 && ar <= 1.75;
 
+          const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
+
+          // 4 Large Corner Alignment Target Boxes centered in viewfinder (aspect 549/807 = 0.6803)
+          const availW = Math.min(cw * 0.90, 440);
+          const availH = Math.max(220, ch - 190);
+          const guideAspect = 549.0 / 807.0;
+          const guideH = Math.min(availH, availW / guideAspect);
+          const guideW = guideH * guideAspect;
+          const cxMid = cw / 2, cyMid = ch / 2 - 6;
+          const gx0 = cxMid - guideW / 2, gx1 = cxMid + guideW / 2;
+          const gy0 = cyMid - guideH / 2, gy1 = cyMid + guideH / 2;
+          const boxW = Math.round(guideW * 0.25);
+          const boxH = Math.round(guideH * 0.16);
+          const boxes = {
+            tl: { x: gx0 - boxW * 0.45, y: gy0 - boxH * 0.45, w: boxW, h: boxH, label: "1" },
+            tr: { x: gx1 - boxW * 0.55, y: gy0 - boxH * 0.45, w: boxW, h: boxH, label: "2" },
+            bl: { x: gx0 - boxW * 0.45, y: gy1 - boxH * 0.55, w: boxW, h: boxH, label: "3" },
+            br: { x: gx1 - boxW * 0.55, y: gy1 - boxH * 0.55, w: boxW, h: boxH, label: "4" }
+          };
+          const inBox = (pt, b) => pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h;
+          const hitTL = validGeo && inBox(pTL, boxes.tl);
+          const hitTR = validGeo && inBox(pTR, boxes.tr);
+          const hitBL = validGeo && inBox(pBL, boxes.bl);
+          const hitBR = validGeo && inBox(pBR, boxes.br);
+          const hitsMap = { tl: hitTL, tr: hitTR, bl: hitBL, br: hitBR };
+          const hitCount = [hitTL, hitTR, hitBL, hitBR].filter(Boolean).length;
+          const allInside = hitCount === 4;
+
+          // Draw subtle outer guide dashed frame + 4 large corner alignment boxes
+          octx.save();
+          octx.strokeStyle = allInside ? "rgba(16,185,129,0.55)" : "rgba(255,255,255,0.22)";
+          octx.lineWidth = 1.5;
+          octx.setLineDash([6, 6]);
+          octx.strokeRect(gx0, gy0, guideW, guideH);
+          octx.setLineDash([]);
+
+          for (const k of ["tl", "tr", "bl", "br"]) {
+            const b = boxes[k];
+            const ok = hitsMap[k];
+            octx.fillStyle = ok ? "rgba(16,185,129,0.18)" : "rgba(239,68,68,0.08)";
+            octx.fillRect(b.x, b.y, b.w, b.h);
+            octx.strokeStyle = ok ? "#10b981" : "#ef4444";
+            octx.lineWidth = ok ? 3.5 : 2.5;
+            octx.strokeRect(b.x, b.y, b.w, b.h);
+          }
+
           if (validGeo) {
+            octx.strokeStyle = allInside ? "#10b981" : "rgba(251,191,36,0.75)";
+            octx.lineWidth = allInside ? 3.5 : 2;
+            octx.beginPath();
+            octx.moveTo(pTL.x, pTL.y);
+            octx.lineTo(pTR.x, pTR.y);
+            octx.lineTo(pBR.x, pBR.y);
+            octx.lineTo(pBL.x, pBL.y);
+            octx.closePath();
+            octx.stroke();
+
+            for (const [k, p] of [["tl", pTL], ["tr", pTR], ["bl", pBL], ["br", pBR]]) {
+              octx.beginPath();
+              octx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+              octx.fillStyle = hitsMap[k] ? "#10b981" : "#fbbf24";
+              octx.fill();
+              octx.strokeStyle = "#ffffff";
+              octx.lineWidth = 2;
+              octx.stroke();
+            }
+          }
+          octx.restore();
+
+          if (allInside) {
             if (_prevLiveCorners) {
               const dMax = Math.max(
                 Math.hypot(tl.x - _prevLiveCorners.tl.x, tl.y - _prevLiveCorners.tl.y),
@@ -2401,38 +2451,11 @@
             }
             _prevLiveCorners = { tl, tr, bl, br };
 
-            const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
             const isLocked = _stableCornerHits >= 2;
-            const col = isLocked ? "#10b981" : "#fbbf24";
-
-            octx.save();
-            octx.strokeStyle = col;
-            octx.lineWidth = isLocked ? 4 : 2.5;
-            octx.fillStyle = isLocked ? "rgba(16,185,129,0.12)" : "rgba(251,191,36,0.08)";
-            octx.beginPath();
-            octx.moveTo(pTL.x, pTL.y);
-            octx.lineTo(pTR.x, pTR.y);
-            octx.lineTo(pBR.x, pBR.y);
-            octx.lineTo(pBL.x, pBL.y);
-            octx.closePath();
-            octx.fill();
-            octx.stroke();
-
-            for (const p of [pTL, pTR, pBL, pBR]) {
-              octx.beginPath();
-              octx.arc(p.x, p.y, 10, 0, Math.PI * 2);
-              octx.fillStyle = col;
-              octx.fill();
-              octx.strokeStyle = "#ffffff";
-              octx.lineWidth = 2;
-              octx.stroke();
-            }
-            octx.restore();
-
             if (statusEl) {
               statusEl.textContent = isLocked
-                ? "✓ Đã khóa 4/4 góc! Đang tự chụp & chấm..."
-                : "Đã bắt 4 góc — Giữ yên máy...";
+                ? "✓ Đã lọt đủ 4/4 ô căn! Đang tự chụp & chấm..."
+                : "✓ Đủ 4/4 ô căn — Giữ yên máy...";
             }
             if (isLocked && appState.autoCaptureEnabled !== false) {
               appState.autoCaptureLocked = true;
@@ -2448,7 +2471,11 @@
           } else {
             _stableCornerHits = 0;
             _prevLiveCorners = null;
-            if (statusEl) statusEl.textContent = "Đưa trọn Vùng Chấm vào khung — tự chụp khi đủ 4 góc";
+            if (statusEl) {
+              statusEl.textContent = validGeo
+                ? `Đưa 4 góc đen lọt vào 4 ô đỏ (${hitCount}/4 ô xanh)`
+                : "Đưa 4 góc đen của Vùng Chấm lọt vào 4 ô đỏ";
+            }
           }
         }
         _liveLoopTimer = setTimeout(tick, 140);

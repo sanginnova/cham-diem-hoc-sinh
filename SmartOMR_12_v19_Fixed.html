@@ -1669,23 +1669,112 @@
         return { x: expX, y: expY, ok: false };
       }
 
-      const tl = findFiducialNear(REF_CORNERS.tl);
-      const tr = findFiducialNear(REF_CORNERS.tr);
-      const bl = findFiducialNear(REF_CORNERS.bl);
-      const br = findFiducialNear(REF_CORNERS.br);
-      const okCount = [tl, tr, bl, br].filter(c => c.ok).length;
+      // Stage 1: Find outer top-left, top-right, bottom-right corners; estimate rough bottom-left
+      const tlOut = findFiducialNear(REF_CORNERS.tl);
+      const trOut = findFiducialNear(REF_CORNERS.tr);
+      const brOut = findFiducialNear(REF_CORNERS.br);
+      const blRough = {
+        x: tlOut.x + (brOut.x - trOut.x),
+        y: brOut.y + (tlOut.y - trOut.y),
+        ok: tlOut.ok && trOut.ok && brOut.ok
+      };
+
+      // Stage 2: Project 4 inner grid timing squares through rough homography and snap each one
+      const REF_GRID_ANCHORS = [
+        { x: 359.9, y: 425.4 }, // Top-left of Mã đề
+        { x: 701.3, y: 419.5 }, // Top-right of Phần I col 2
+        { x: 332.5, y: 1012.0 }, // Bottom-left of Phần III (between C15-C16)
+        { x: 672.0, y: 1011.0 }  // Bottom-right of Phần III (right of C18)
+      ];
+
+      function findFiducialAtImagePt(expX, expY, winX, winY) {
+        const x0 = Math.max(rOut + 1, Math.round(expX - winX));
+        const x1 = Math.min(w - rOut - 1, Math.round(expX + winX));
+        const y0 = Math.max(rOut + 1, Math.round(expY - winY));
+        const y1 = Math.min(h - rOut - 1, Math.round(expY + winY));
+        let bestScore = -1e9, bestX = expX, bestY = expY, bestContrast = 0;
+        for (let y = y0; y <= y1; y += step) {
+          for (let x = x0; x <= x1; x += step) {
+            const inner = boxMean(x - rIn, y - rIn, x + rIn, y + rIn);
+            if (inner > 145) continue;
+            const outerAll = boxMean(x - rOut, y - rOut, x + rOut, y + rOut);
+            const innerArea = (2 * rIn) * (2 * rIn);
+            const outerArea = (2 * rOut) * (2 * rOut);
+            const ringMean = (outerAll * outerArea - inner * innerArea) / (outerArea - innerArea);
+            const contrast = ringMean - inner;
+            if (contrast < 30) continue;
+            const sc = contrast - Math.hypot(x - expX, y - expY) * 0.08;
+            if (sc > bestScore) { bestScore = sc; bestX = x; bestY = y; bestContrast = contrast; }
+          }
+        }
+        if (bestContrast >= 30) {
+          let fineBest = -1e9, fx = bestX, fy = bestY;
+          for (let y = Math.max(rOut + 1, bestY - step); y <= Math.min(h - rOut - 1, bestY + step); y++) {
+            for (let x = Math.max(rOut + 1, bestX - step); x <= Math.min(w - rOut - 1, bestX + step); x++) {
+              const inner = boxMean(x - rIn, y - rIn, x + rIn, y + rIn);
+              const outerAll = boxMean(x - rOut, y - rOut, x + rOut, y + rOut);
+              const innerArea = (2 * rIn) * (2 * rIn);
+              const outerArea = (2 * rOut) * (2 * rOut);
+              const ringMean = (outerAll * outerArea - inner * innerArea) / (outerArea - innerArea);
+              const sc = ringMean - inner;
+              if (sc > fineBest) { fineBest = sc; fx = x; fy = y; }
+            }
+          }
+          return { x: fx, y: fy, ok: true };
+        }
+        return { x: expX, y: expY, ok: false };
+      }
+
+      const H_rough = computeHomographyMatrix(
+        [REF_CORNERS.tl, REF_CORNERS.tr, REF_CORNERS.bl, REF_CORNERS.br],
+        [tlOut, trOut, blRough, brOut]
+      );
+
+      let finalCorners = { tl: tlOut, tr: trOut, bl: blRough, br: brOut };
+      let okCount = [tlOut, trOut, brOut].filter(c => c.ok).length;
+
+      if (H_rough) {
+        const snapWinX = Math.round(0.055 * w);
+        const snapWinY = Math.round(0.055 * h);
+        const snappedGrid = REF_GRID_ANCHORS.map(pt => {
+          const den = H_rough[6] * pt.x + H_rough[7] * pt.y + 1.0;
+          const px = (H_rough[0] * pt.x + H_rough[1] * pt.y + H_rough[2]) / den;
+          const py = (H_rough[3] * pt.x + H_rough[4] * pt.y + H_rough[5]) / den;
+          return findFiducialAtImagePt(px, py, snapWinX, snapWinY);
+        });
+        const gridOk = snappedGrid.filter(c => c.ok).length;
+        if (gridOk === 4) {
+          const H_inner = computeHomographyMatrix(REF_GRID_ANCHORS, snappedGrid);
+          if (H_inner) {
+            const projOuter = pt => {
+              const den = H_inner[6] * pt.x + H_inner[7] * pt.y + 1.0;
+              return {
+                x: (H_inner[0] * pt.x + H_inner[1] * pt.y + H_inner[2]) / den,
+                y: (H_inner[3] * pt.x + H_inner[4] * pt.y + H_inner[5]) / den
+              };
+            };
+            finalCorners = {
+              tl: projOuter(REF_CORNERS.tl),
+              tr: projOuter(REF_CORNERS.tr),
+              bl: projOuter(REF_CORNERS.bl),
+              br: projOuter(REF_CORNERS.br)
+            };
+            okCount = 4;
+          }
+        }
+      }
 
       appState.corners = {
-        tl: { x: tl.x, y: tl.y },
-        tr: { x: tr.x, y: tr.y },
-        bl: { x: bl.x, y: bl.y },
-        br: { x: br.x, y: br.y }
+        tl: { x: finalCorners.tl.x, y: finalCorners.tl.y },
+        tr: { x: finalCorners.tr.x, y: finalCorners.tr.y },
+        bl: { x: finalCorners.bl.x, y: finalCorners.bl.y },
+        br: { x: finalCorners.br.x, y: finalCorners.br.y }
       };
       runOMRGrading();
       if (!silent) {
         showToast(
           okCount === 4
-            ? "Đã tự động bắt chuẩn 4/4 ô vuông đen góc Vùng Chấm!"
+            ? "Đã tự động bắt chuẩn 4/4 ô vuông lưới nội bộ!"
             : `Đã bắt ${okCount}/4 góc — kéo nhẹ góc còn lại nếu cần.`
         );
       }

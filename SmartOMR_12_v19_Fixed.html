@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.8 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.9 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.8</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.9</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -670,7 +670,7 @@
               <input id="chkIgnoreRedInk" type="checkbox" checked onchange="updateOMRParams()" class="rounded bg-slate-800 border-slate-600 text-emerald-500" />
             </label>
             <label class="flex items-center justify-between text-xs text-slate-200 cursor-pointer">
-              <span>Vẽ nhãn tổng kết điểm lên góc trái trên của ảnh phiếu</span>
+              <span>Vẽ nhãn tổng kết điểm lên góc dưới trái của ảnh phiếu (không che tên HS)</span>
               <input id="chkDrawTopStamp" type="checkbox" checked onchange="renderOMRCanvas()" class="rounded bg-slate-800 border-slate-600 text-emerald-500" />
             </label>
           </div>
@@ -1459,13 +1459,13 @@
         });
       }
 
-      // 5. Draw Top-Left Summary Stamp (like the sample graded sheet)
+      // 5. Draw Bottom-Left Summary Stamp (never covers top student name/class header for Gemini Vision)
       if (drawTopStamp) {
-        const bx = 24 * scale;
-        const by = 10 * scale;
-        const bw = 526 * scale;
         const bh = 75 * scale;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.96)";
+        const bw = Math.min(526 * scale, w - 24 * scale);
+        const bx = 12 * scale;
+        const by = Math.max(10 * scale, h - bh - 10 * scale);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.94)";
         ctx.fillRect(bx, by, bw, bh);
         ctx.strokeStyle = "#dc2626";
         ctx.lineWidth = 2 * scale;

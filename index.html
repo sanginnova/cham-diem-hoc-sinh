@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.2 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v19.3 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">SmartOMR Camera</h1>
-            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.2 • Inner-Grid 2-Stage</span>
+            <span class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.3 • Wide-FOV Camera</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -157,7 +157,7 @@
 
         <!-- Full-Screen Live Camera Viewfinder Overlay -->
         <div id="liveCameraWrap" class="hidden fixed inset-0 z-50 w-screen h-[100dvh] bg-black overflow-hidden select-none">
-          <video id="cameraVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+          <video id="cameraVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-contain bg-black"></video>
           <div class="scan-laser"></div>
 
           <!-- Full-Screen AR Alignment Overlay & HUD -->
@@ -167,8 +167,8 @@
               <div class="flex items-center gap-2">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <div>
-                  <div class="text-xs sm:text-sm font-bold text-white leading-tight">Camera Toàn Màn Hình — SmartOMR</div>
-                  <div class="text-[11px] text-emerald-300">Khớp 4 ô vuông đen Vùng Chấm vào 4 góc khung xanh</div>
+                  <div class="text-xs sm:text-sm font-bold text-white leading-tight">Camera Góc Rộng — SmartOMR</div>
+                  <div class="text-[11px] text-emerald-300">Đưa trọn tờ phiếu A4 vào khung (rõ Họ tên &amp; Vùng Chấm)</div>
                 </div>
               </div>
               <div class="flex items-center gap-1.5">
@@ -182,8 +182,8 @@
               </div>
             </div>
 
-            <!-- Center AR Target Box representing VÙNG CHẤM TRẮC NGHIỆM (aspect ratio matching 525:712) -->
-            <div class="relative w-[86%] max-w-lg h-[70%] border-2 border-dashed border-emerald-400/85 rounded-xl shadow-[0_0_0_9999px_rgba(2,6,23,0.48)] flex flex-col justify-between p-2">
+            <!-- Center AR Target Box representing full A4 sheet (3:4 wide-FOV natural framing) -->
+            <div class="relative w-[92%] max-w-md aspect-[3/4] max-h-[70dvh] border-2 border-dashed border-emerald-400/75 rounded-xl shadow-[0_0_0_9999px_rgba(2,6,23,0.42)] flex flex-col justify-between p-2">
               <!-- 4 Fiducial Corner Brackets -->
               <div class="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-emerald-400 rounded-tl-md"></div>
               <div class="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-emerald-400 rounded-tr-md"></div>
@@ -1858,11 +1858,20 @@
           video: {
             facingMode: { ideal: appState.cameraFacing },
             width: { ideal: 1920 },
-            height: { ideal: 2560 }
+            height: { ideal: 1440 },
+            aspectRatio: { ideal: 4 / 3 }
           },
           audio: false
         });
         appState.cameraStream = stream;
+        // Enable continuous autofocus when supported by device camera
+        try {
+          const track = stream.getVideoTracks()[0];
+          const caps = track?.getCapabilities?.();
+          if (caps?.focusMode?.includes("continuous")) {
+            track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+          }
+        } catch (e) {}
         const video = document.getElementById("cameraVideo");
         video.srcObject = stream;
         wrap.classList.remove("hidden");
@@ -1956,18 +1965,31 @@
       const capturedImg = new Image();
       capturedImg.onload = () => {
         currentSourceImage = capturedImg;
-        // Map the target guide box (84% width, 68% height centered) to the 4 OMR corners
-        const w = capturedImg.width;
-        const h = capturedImg.height;
+        const w = capturedImg.naturalWidth || capturedImg.width;
+        const h = capturedImg.naturalHeight || capturedImg.height;
+        const sx = w / REF_WIDTH;
+        const sy = h / REF_HEIGHT;
+        appState.currentScan.studentName = "";
+        const nameInp = document.getElementById("inpStudentName");
+        if (nameInp) nameInp.value = "";
+        appState.currentScan.manualCode = "AUTO";
+        const codeSel = document.getElementById("selExamCodeOverride");
+        if (codeSel) codeSel.value = "AUTO";
+
         appState.corners = {
-          tl: { x: w * 0.08, y: h * 0.16 },
-          tr: { x: w * 0.92, y: h * 0.16 },
-          bl: { x: w * 0.08, y: h * 0.84 },
-          br: { x: w * 0.92, y: h * 0.84 }
+          tl: { x: REF_CORNERS.tl.x * sx, y: REF_CORNERS.tl.y * sy },
+          tr: { x: REF_CORNERS.tr.x * sx, y: REF_CORNERS.tr.y * sy },
+          bl: { x: REF_CORNERS.bl.x * sx, y: REF_CORNERS.bl.y * sy },
+          br: { x: REF_CORNERS.br.x * sx, y: REF_CORNERS.br.y * sy }
         };
         stopLiveCamera();
-        runOMRGrading();
-        showToast("Đã chụp và chấm phiếu từ Camera! Bật 'Chỉnh 4 Góc' nếu cần khớp lại khung.");
+        const okCount = autoDetectFiducialCorners(true);
+        setFullScreenCalibrationUI(true);
+        showToast(
+          okCount === 4
+            ? "Đã chụp và tự động bắt chuẩn 4/4 góc Vùng Chấm!"
+            : `Đã chụp (bắt ${okCount}/4 góc) — kéo nhẹ góc còn lại nếu cần.`
+        );
       };
       capturedImg.src = tempCanvas.toDataURL("image/jpeg", 0.92);
     }

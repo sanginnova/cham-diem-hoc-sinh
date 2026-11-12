@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.1 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.2 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,7 +34,7 @@
     }
     @media (max-width: 1023px) {
       #omrCanvas {
-        max-height: 46dvh;
+        max-height: 40dvh;
         object-fit: contain;
       }
     }
@@ -84,7 +84,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.1</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.2</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -122,10 +122,10 @@
   <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 py-2.5 sm:py-4">
 
     <!-- ==================== TAB 1: SCANNER & GRADER ==================== -->
-    <section id="viewScanner" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+    <section id="viewScanner" class="grid grid-cols-1 lg:grid-cols-12 gap-2.5 lg:gap-5 items-start">
 
       <!-- Left Column: Camera / Image Canvas & Controls (7 cols) -->
-      <div class="lg:col-span-7 flex flex-col gap-3">
+      <div class="lg:col-span-7 flex flex-col gap-2 lg:gap-3">
 
         <!-- Action Toolbar (Minimalist 1-row) -->
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex items-center gap-2">
@@ -299,7 +299,7 @@
       </div>
 
       <!-- Right Column: Live Grading Result Card & Answer Breakdown (5 cols) -->
-      <div class="lg:col-span-5 flex flex-col gap-4">
+      <div class="lg:col-span-5 flex flex-col gap-2.5 lg:gap-4">
 
         <!-- Score Summary Hero Card -->
         <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/60 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl">
@@ -2365,7 +2365,7 @@
         }
         saveCurrentResultToRoster(true);
         playScanCompleteBeep(okCount);
-        setFullScreenCalibrationUI(true);
+        setFullScreenCalibrationUI(okCount < 4);
         showToast(
           okCount === 4
             ? `Đã tự lưu (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ) — chuẩn 4/4 góc!`
@@ -2406,7 +2406,7 @@
           const okCount = autoDetectFiducialCorners(true);
           saveCurrentResultToRoster(true);
           playScanCompleteBeep(okCount);
-          setFullScreenCalibrationUI(true);
+          setFullScreenCalibrationUI(okCount < 4);
           showToast(
             okCount === 4
               ? `Đã nạp & tự lưu "${file.name}" (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ)!`

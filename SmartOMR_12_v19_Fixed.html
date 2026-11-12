@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v21.0 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v21.1 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.0</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.1</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -2381,29 +2381,34 @@
 
           const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
 
-          // 4 Corner Alignment Target Boxes & Top Student Name Box
-          // Leave the top ~30% of camera exclusively for Student Name & Header
+          // 4 Corner Alignment Target Boxes & Complete A4 Exam Sheet Guide
+          // Perfectly proportioned so holding phone to frame the A4 sheet fits all 4 corners and the name header
           const vidW = rw * scale, vidH = rh * scale;
-          const guideAspect = 549.0 / 807.0; // ~0.6803
+          const sheetAspect = 815.0 / 1135.0; // Physical ratio of standard A4 sheet (~0.71806)
 
-          // Set guide width compact (~50%-52% of video width) so user captures the entire A4 sheet with name at top
-          let guideW = Math.min(vidW * 0.52, vidH * 0.35);
-          let guideH = guideW / guideAspect; // guideW * 1.47
-          if (guideH > vidH * 0.48) {
-            guideH = vidH * 0.48;
-            guideW = guideH * guideAspect;
+          // Frame A4 sheet comfortably inside the camera viewport (~80% width on portrait phone)
+          let sheetW = vidW * 0.80;
+          let sheetH = sheetW / sheetAspect;
+          if (sheetH > vidH * 0.82) {
+            sheetH = vidH * 0.82;
+            sheetW = sheetH * sheetAspect;
           }
 
-          const cxMid = ox + vidW * 0.50;
-          // Position OMR guide in lower-mid zone: leaves top 28%-32% of video for Student Name, Class, School Header
-          const gy0 = oy + Math.max(vidH * 0.28, vidH * 0.88 - guideH - 45);
-          const gy1 = gy0 + guideH;
-          const gx0 = cxMid - guideW / 2;
-          const gx1 = cxMid + guideW / 2;
+          const sheetX = ox + (vidW - sheetW) / 2;
+          const sheetY = oy + Math.max(12, (vidH - sheetH) * 0.40);
 
-          // Target corner boxes with generous capture tolerance so it's easy and responsive to lock
-          const boxW = Math.round(guideW * 0.30);
-          const boxH = Math.round(guideH * 0.18);
+          // Physical positions of 4 fiducial corners on the A4 sheet:
+          // TL = (175, 270), TR = (724, 270), BL = (175, 1077), BR = (724, 1077)
+          const gx0 = sheetX + sheetW * (175.0 / 815.0);
+          const gx1 = sheetX + sheetW * (724.0 / 815.0);
+          const gy0 = sheetY + sheetH * (270.0 / 1135.0);
+          const gy1 = sheetY + sheetH * (1077.0 / 1135.0);
+          const guideW = gx1 - gx0;
+          const guideH = gy1 - gy0;
+
+          // Target corner boxes with comfortable capture tolerance
+          const boxW = Math.round(guideW * 0.24);
+          const boxH = Math.round(guideH * 0.16);
           const boxes = {
             tl: { x: gx0 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "1" },
             tr: { x: gx1 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "2" },
@@ -2421,39 +2426,50 @@
 
           octx.save();
 
-          // 1. Draw dedicated Student Name Header Guide Box above OMR area
-          const nameBoxW = guideW * 1.10;
-          const nameBoxH = Math.min(guideH * 0.32, gy0 - oy - 14);
-          const nameBoxX = cxMid - nameBoxW / 2;
-          const nameBoxY = gy0 - nameBoxH - 8;
+          // 1. Draw outer A4 sheet guide frame
+          octx.strokeStyle = "rgba(255, 255, 255, 0.24)";
+          octx.lineWidth = 1.2;
+          octx.setLineDash([8, 8]);
+          octx.strokeRect(sheetX, sheetY, sheetW, sheetH);
+          octx.setLineDash([]);
+          octx.fillStyle = "rgba(255, 255, 255, 0.55)";
+          octx.font = "bold 10px Inter, sans-serif";
+          octx.textAlign = "center";
+          octx.fillText("KHUNG BÀI THI A4 (ĐƯA VỪA VẶN BÀI THI VÀO ĐÂY)", sheetX + sheetW / 2, sheetY - 4);
 
-          if (nameBoxH > 22) {
+          // 2. Draw dedicated Student Name Header Guide Box at top of sheet
+          const nameBoxW = sheetW * 0.94;
+          const nameBoxH = gy0 - sheetY - 8;
+          const nameBoxX = sheetX + (sheetW - nameBoxW) / 2;
+          const nameBoxY = sheetY + 4;
+
+          if (nameBoxH > 20) {
             octx.strokeStyle = "rgba(56, 189, 248, 0.45)";
             octx.lineWidth = 1.5;
             octx.setLineDash([5, 5]);
             octx.strokeRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH);
             octx.setLineDash([]);
-            octx.fillStyle = "rgba(56, 189, 248, 0.06)";
+            octx.fillStyle = "rgba(56, 189, 248, 0.05)";
             octx.fillRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH);
 
             octx.fillStyle = "rgba(186, 230, 253, 0.90)";
             octx.font = "bold 11px Inter, sans-serif";
             octx.textAlign = "center";
-            octx.fillText("VÙNG HỌ TÊN & LỚP (TỰ ĐỘNG LẤY TÊN)", cxMid, nameBoxY + 16);
+            octx.fillText("VÙNG HỌ TÊN & LỚP (TỰ ĐỘNG LẤY TÊN)", sheetX + sheetW / 2, nameBoxY + 16);
           }
 
-          // 2. Draw subtle outer guide dashed frame around OMR area
-          octx.strokeStyle = allInside ? "rgba(16,185,129,0.55)" : "rgba(255,255,255,0.22)";
+          // 3. Draw subtle dashed frame around OMR area
+          octx.strokeStyle = allInside ? "rgba(16,185,129,0.55)" : "rgba(255,255,255,0.18)";
           octx.lineWidth = 1.5;
           octx.setLineDash([6, 6]);
           octx.strokeRect(gx0, gy0, guideW, guideH);
           octx.setLineDash([]);
 
-          // 3. Draw 4 Corner Alignment Target Boxes
+          // 4. Draw 4 Corner Alignment Target Boxes
           for (const k of ["tl", "tr", "bl", "br"]) {
             const b = boxes[k];
             const ok = hitsMap[k];
-            octx.fillStyle = ok ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.08)";
+            octx.fillStyle = ok ? "rgba(16,185,129,0.22)" : "rgba(239,68,68,0.08)";
             octx.fillRect(b.x, b.y, b.w, b.h);
             octx.strokeStyle = ok ? "#10b981" : "#ef4444";
             octx.lineWidth = ok ? 3.5 : 2.5;
@@ -3376,9 +3392,10 @@
           updateSyncPill("connected", `Đã nối ${_syncConns.length} ĐT`);
           if (hostBadge) hostBadge.textContent = `Đã kết nối ${_syncConns.length} ĐT`;
           showToast("Điện thoại đã kết nối real-time với Máy tính!");
-          // Push current exam keys & class roster to phone
+          // Push current exam keys, class roster, AND Gemini API Key to phone
           const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
-          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText });
+          const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText, geminiApiKey });
         });
         conn.on("data", data => handleIncomingSyncMessage(data, conn));
         conn.on("close", () => {
@@ -3470,6 +3487,7 @@
       if (_syncMode !== "client" || !_syncClientConn || !_syncClientConn.open) return;
       const scan = appState.currentScan;
       const previewDataUrl = makeCompressedCanvasPreview();
+      const cropNameDataUrl = cropNameRegionDataUrl();
       _syncClientConn.send({
         type: "SYNC_ENTRY",
         entry,
@@ -3483,17 +3501,91 @@
           p3Answers: scan.p3Answers,
           essayScore: scan.essayScore
         },
-        previewDataUrl
+        previewDataUrl,
+        cropNameDataUrl
       });
     }
 
     function broadcastSyncKeys() {
       if (_syncMode === "host") {
-        _syncConns.forEach(c => { if (c.open) c.send({ type: "SYNC_KEYS", examKeys: appState.examKeys }); });
+        const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
+        const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+        _syncConns.forEach(c => {
+          if (c.open) c.send({
+            type: "SYNC_KEYS",
+            examKeys: appState.examKeys,
+            classListText,
+            geminiApiKey
+          });
+        });
       }
     }
 
-    function handleIncomingSyncMessage(msg) {
+    async function processDesktopGeminiVision(entryId, cropUrl, conn) {
+      const geminiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+      if (!geminiKey || !cropUrl) return;
+      try {
+        const b64 = cropUrl.split(",")[1];
+        if (!b64) return;
+        const rosterHint = getClassRosterNames().slice(0, 80).join(", ");
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  { inline_data: { mime_type: "image/jpeg", data: b64 } },
+                  { text: `Đọc chính xác Họ và tên học sinh (chữ viết tay) và Lớp trong ảnh phiếu thi này. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON: {"name": "...", "className": "..."}` }
+                ]
+              }],
+              generationConfig: { responseMimeType: "application/json", temperature: 0 }
+            })
+          }
+        );
+        const j = await resp.json();
+        const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+        const parsed = JSON.parse(txt);
+        const rawName = (parsed.name || "").trim();
+        const rawClass = (parsed.className || "").trim();
+        const matched = fuzzyMatchStudentName(rawName);
+        const finalName = matched ? matched.name : rawName;
+        if (!finalName) return;
+
+        // 1. Update Desktop Roster & Active View
+        const idx = appState.roster.findIndex(r => r.id === entryId);
+        if (idx >= 0) {
+          appState.roster[idx].name = finalName;
+          if (rawClass) appState.roster[idx].className = rawClass;
+          persistRoster();
+          renderRosterTable();
+        }
+        if (appState.currentScan.scanId === entryId) {
+          appState.currentScan.studentName = finalName;
+          if (rawClass) appState.currentScan.studentClass = rawClass;
+          const nInp = document.getElementById("inpStudentName"); if (nInp) nInp.value = finalName;
+          const cInp = document.getElementById("inpStudentClass"); if (cInp) cInp.value = rawClass || "12B1";
+          updateStudentHeader();
+          renderOMRCanvas();
+        }
+        showToast(`✨ Gemini Vision trên PC đã nhận diện tên: "${finalName}"!`);
+
+        // 2. Send back to Phone so Phone UI updates student name in real-time
+        if (conn && conn.open) {
+          conn.send({
+            type: "SYNC_NAME_UPDATE",
+            entryId,
+            studentName: finalName,
+            studentClass: rawClass
+          });
+        }
+      } catch (err) {
+        console.warn("Desktop Gemini Vision error:", err);
+      }
+    }
+
+    function handleIncomingSyncMessage(msg, conn) {
       if (!msg || !msg.type) return;
       if (msg.type === "SYNC_KEYS" && msg.examKeys) {
         appState.examKeys = { ...DEFAULT_EXAM_KEYS, ...msg.examKeys };
@@ -3503,6 +3595,13 @@
           if (txt) txt.value = msg.classListText;
           try { localStorage.setItem("smartomr_class_list_v19", msg.classListText); } catch (e) {}
           refreshNameDatalist();
+        }
+        if (msg.geminiApiKey) {
+          appState.geminiApiKey = msg.geminiApiKey;
+          try { localStorage.setItem("smartomr_gemini_key", msg.geminiApiKey); } catch (e) {}
+          const kInp = document.getElementById("inpGeminiApiKey");
+          if (kInp) kInp.value = msg.geminiApiKey;
+          showToast("🔑 Đã nhận Gemini Vision API Key từ Máy tính! Tự động đọc tên HS.");
         }
         renderExamKeysTab();
         recalculateScoresFromState();
@@ -3557,9 +3656,36 @@
           }
           playScanCompleteBeep(4);
           showToast(`📱 Nhận bài "${msg.entry.name}": ${msg.entry.totalTN.toFixed(2)}/7.0đ (MĐ ${msg.entry.examCode})`);
+
+          // If entry doesn't have an accurate student name yet, run Desktop Gemini Vision
+          const desktopGeminiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+          const needsNameResolution = !msg.entry.name || msg.entry.name === "Chưa nhập tên" || msg.entry.name.startsWith("Thí sinh");
+          if (desktopGeminiKey && msg.cropNameDataUrl && needsNameResolution) {
+            processDesktopGeminiVision(msg.entry.id, msg.cropNameDataUrl, conn);
+          }
         } finally {
           _isApplyingRemoteSync = false;
         }
+      } else if (msg.type === "SYNC_NAME_UPDATE" && msg.entryId) {
+        // Phone receives recognized student name from Desktop
+        const idx = appState.roster.findIndex(r => r.id === msg.entryId);
+        if (idx >= 0) {
+          appState.roster[idx].name = msg.studentName;
+          if (msg.studentClass) appState.roster[idx].className = msg.studentClass;
+          persistRoster();
+          renderRosterTable();
+        }
+        if (appState.currentScan.scanId === msg.entryId) {
+          appState.currentScan.studentName = msg.studentName;
+          if (msg.studentClass) appState.currentScan.studentClass = msg.studentClass;
+          const nInp = document.getElementById("inpStudentName"); if (nInp) nInp.value = msg.studentName;
+          const cInp = document.getElementById("inpStudentClass"); if (cInp) cInp.value = msg.studentClass || "12B1";
+          const statusEl = document.getElementById("nameOcrStatus");
+          if (statusEl) statusEl.textContent = "✓ Máy tính Gemini AI: " + msg.studentName;
+          updateStudentHeader();
+          renderOMRCanvas();
+        }
+        showToast(`✨ Máy tính đã đọc tên học sinh: "${msg.studentName}"!`);
       }
     }
 
@@ -3638,6 +3764,7 @@
         localStorage.setItem("smartomr_class_list_v19", listText);
       } catch (e) {}
       refreshNameDatalist();
+      broadcastSyncKeys();
     }
 
     function fuzzyMatchStudentName(rawText) {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.4 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.5 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -25,18 +25,23 @@
       background: #020617;
       border-radius: 1rem;
       overflow: hidden;
-      touch-action: none;
+      touch-action: pan-y;
     }
     #omrCanvas {
       display: block;
       width: 100%;
       height: auto;
       cursor: crosshair;
+      transform-origin: center center;
+      transition: transform 0.06s ease-out;
     }
     @media (max-width: 1023px) {
       #omrCanvas {
         max-height: 40dvh;
         object-fit: contain;
+      }
+      #omrCanvas.canvas-expanded {
+        max-height: 78dvh;
       }
     }
     button, label, input, select {
@@ -85,7 +90,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.4</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.5</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -338,7 +343,15 @@
               <span>Hiện vòng tròn chấm</span>
             </label>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-1.5">
+            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-lg overflow-hidden">
+              <button onclick="adjustCanvasZoom(-0.4)" title="Thu nhỏ" class="px-2.5 py-1 hover:bg-slate-800 text-slate-200 font-bold text-sm">−</button>
+              <button id="btnZoomReset" onclick="resetCanvasZoom()" title="Về 100%" class="px-2 py-1 hover:bg-slate-800 text-emerald-300 font-mono-code text-[11px] border-x border-slate-800">100%</button>
+              <button onclick="adjustCanvasZoom(0.4)" title="Phóng to" class="px-2.5 py-1 hover:bg-slate-800 text-slate-200 font-bold text-sm">+</button>
+            </div>
+            <button id="btnExpandCanvas" onclick="toggleCanvasExpand()" class="lg:hidden px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 font-semibold">
+              Phóng khung
+            </button>
             <button id="btnDownloadGradedImg" onclick="downloadGradedImage()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold flex items-center gap-1 shadow">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               <span>Tải Ảnh</span>
@@ -2033,8 +2046,57 @@
       };
     }
 
+    let _canvasZoom = 1;
+    let _canvasPanX = 0;
+    let _canvasPanY = 0;
+
+    function applyCanvasZoomTransform() {
+      const canvas = document.getElementById("omrCanvas");
+      const wrap = document.getElementById("canvasViewportWrap");
+      const lbl = document.getElementById("btnZoomReset");
+      if (canvas) {
+        if (_canvasZoom <= 1.01) {
+          _canvasZoom = 1; _canvasPanX = 0; _canvasPanY = 0;
+          canvas.style.transform = "";
+        } else {
+          const maxPanX = (canvas.clientWidth * (_canvasZoom - 1)) / 2 + 40;
+          const maxPanY = (canvas.clientHeight * (_canvasZoom - 1)) / 2 + 40;
+          _canvasPanX = Math.max(-maxPanX, Math.min(maxPanX, _canvasPanX));
+          _canvasPanY = Math.max(-maxPanY, Math.min(maxPanY, _canvasPanY));
+          canvas.style.transform = `translate(${_canvasPanX}px, ${_canvasPanY}px) scale(${_canvasZoom})`;
+        }
+      }
+      if (wrap) {
+        wrap.style.touchAction = (appState.calibrationMode || _canvasZoom > 1) ? "none" : "pan-y";
+      }
+      if (lbl) lbl.textContent = `${Math.round(_canvasZoom * 100)}%`;
+    }
+
+    function adjustCanvasZoom(delta) {
+      _canvasZoom = Math.max(1, Math.min(4.5, Number((_canvasZoom + delta).toFixed(2))));
+      applyCanvasZoomTransform();
+    }
+
+    function resetCanvasZoom() {
+      _canvasZoom = 1; _canvasPanX = 0; _canvasPanY = 0;
+      applyCanvasZoomTransform();
+    }
+
+    function toggleCanvasExpand() {
+      const canvas = document.getElementById("omrCanvas");
+      const btn = document.getElementById("btnExpandCanvas");
+      if (!canvas) return;
+      const expanded = canvas.classList.toggle("canvas-expanded");
+      if (btn) btn.textContent = expanded ? "Thu gọn" : "Phóng khung";
+    }
+
     function initCanvasDragEvents() {
       const canvas = document.getElementById("omrCanvas");
+      const stage = document.getElementById("canvasStageInner");
+      let _isPanning = false;
+      let _panStartX = 0, _panStartY = 0, _panOrigX = 0, _panOrigY = 0;
+      let _pinchStartDist = 0, _pinchStartZoom = 1;
+      let _lastTapTime = 0;
 
       function getCanvasCoords(evt) {
         const rect = canvas.getBoundingClientRect();
@@ -2047,7 +2109,41 @@
       }
 
       function onStart(evt) {
-        if (!appState.calibrationMode) return;
+        if (evt.touches && evt.touches.length === 2) {
+          _isPanning = false;
+          appState.draggingCorner = null;
+          _pinchStartDist = Math.hypot(
+            evt.touches[0].clientX - evt.touches[1].clientX,
+            evt.touches[0].clientY - evt.touches[1].clientY
+          );
+          _pinchStartZoom = _canvasZoom;
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+        if (!appState.calibrationMode) {
+          // Double-tap to toggle zoom 1x <-> 2.4x
+          if (evt.touches && evt.touches.length === 1) {
+            const now = Date.now();
+            if (now - _lastTapTime < 280) {
+              _canvasZoom = _canvasZoom > 1.2 ? 1 : 2.4;
+              if (_canvasZoom === 1) { _canvasPanX = 0; _canvasPanY = 0; }
+              applyCanvasZoomTransform();
+              _lastTapTime = 0;
+              if (evt.cancelable) evt.preventDefault();
+              return;
+            }
+            _lastTapTime = now;
+          }
+          if (_canvasZoom > 1) {
+            _isPanning = true;
+            _panStartX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+            _panStartY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+            _panOrigX = _canvasPanX;
+            _panOrigY = _canvasPanY;
+            if (evt.cancelable) evt.preventDefault();
+          }
+          return;
+        }
         const pt = getCanvasCoords(evt);
         const c = appState.corners;
         let closestKey = null;
@@ -2067,6 +2163,25 @@
       }
 
       function onMove(evt) {
+        if (evt.touches && evt.touches.length === 2 && _pinchStartDist > 0) {
+          const dist = Math.hypot(
+            evt.touches[0].clientX - evt.touches[1].clientX,
+            evt.touches[0].clientY - evt.touches[1].clientY
+          );
+          _canvasZoom = Math.max(1, Math.min(4.5, _pinchStartZoom * (dist / _pinchStartDist)));
+          applyCanvasZoomTransform();
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
+        if (_isPanning && !appState.draggingCorner) {
+          const cx = evt.touches ? evt.touches[0].clientX : evt.clientX;
+          const cy = evt.touches ? evt.touches[0].clientY : evt.clientY;
+          _canvasPanX = _panOrigX + (cx - _panStartX);
+          _canvasPanY = _panOrigY + (cy - _panStartY);
+          applyCanvasZoomTransform();
+          if (evt.cancelable) evt.preventDefault();
+          return;
+        }
         if (!appState.draggingCorner) return;
         if (evt.cancelable) evt.preventDefault();
         const pt = getCanvasCoords(evt);
@@ -2078,10 +2193,28 @@
       }
 
       function onEnd() {
+        _pinchStartDist = 0;
+        _isPanning = false;
         if (appState.draggingCorner) {
           appState.draggingCorner = null;
           runOMRGrading();
         }
+      }
+
+      canvas.addEventListener("dblclick", () => {
+        if (appState.calibrationMode) return;
+        _canvasZoom = _canvasZoom > 1.2 ? 1 : 2.4;
+        if (_canvasZoom === 1) { _canvasPanX = 0; _canvasPanY = 0; }
+        applyCanvasZoomTransform();
+      });
+
+      if (stage) {
+        stage.addEventListener("wheel", evt => {
+          if (evt.ctrlKey || _canvasZoom > 1) {
+            evt.preventDefault();
+            adjustCanvasZoom(evt.deltaY < 0 ? 0.25 : -0.25);
+          }
+        }, { passive: false });
       }
 
       canvas.addEventListener("mousedown", onStart);

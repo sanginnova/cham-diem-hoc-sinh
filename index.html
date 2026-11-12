@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.7 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v19.8 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.7</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.8</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -143,21 +143,25 @@
         <!-- Full-Screen Live Camera Viewfinder Overlay -->
         <div id="liveCameraWrap" class="hidden fixed inset-0 z-50 w-screen h-[100dvh] bg-black overflow-hidden select-none">
           <video id="cameraVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-contain bg-black"></video>
+          <canvas id="cameraOverlayCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-[5]"></canvas>
           <div class="scan-laser"></div>
 
           <!-- Full-Screen AR Alignment Overlay & HUD -->
           <div class="relative z-10 w-full h-full pointer-events-none flex flex-col items-center justify-between p-3 sm:p-5">
             <!-- Top HUD Bar -->
             <div class="pointer-events-auto w-full max-w-2xl flex items-center justify-between gap-2 bg-slate-950/80 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-800/90 shadow-xl">
-              <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <div>
-                  <div class="text-xs sm:text-sm font-bold text-white leading-tight">Camera Góc Rộng — SmartOMR</div>
-                  <div class="text-[11px] text-emerald-300">Đưa trọn tờ phiếu A4 vào khung (rõ Họ tên &amp; Vùng Chấm)</div>
+              <div class="flex items-center gap-2 min-w-0">
+                <span id="liveCamDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                <div class="min-w-0">
+                  <div class="text-xs sm:text-sm font-bold text-white leading-tight truncate">SmartOMR Live</div>
+                  <div id="liveCamStatusText" class="text-[11px] text-emerald-300 truncate">Đưa trọn Vùng Chấm vào khung — tự chụp khi đủ 4 góc</div>
                 </div>
               </div>
-              <div class="flex items-center gap-1.5">
-                <button id="btnFullscreenCam" onclick="toggleNativeFullscreenCamera()" class="px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-sky-500/30 text-xs font-semibold flex items-center gap-1" title="Phóng toàn màn hình thiết bị">
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button id="btnAutoCaptureToggle" onclick="toggleAutoCapture()" class="px-2.5 py-1.5 rounded-xl bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold">
+                  Tự chụp: BẬT
+                </button>
+                <button id="btnFullscreenCam" onclick="toggleNativeFullscreenCamera()" class="hidden sm:flex px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-sky-500/30 text-xs font-semibold items-center gap-1" title="Phóng toàn màn hình thiết bị">
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
                   <span id="lblFullscreenCam">Toàn màn hình</span>
                 </button>
@@ -1566,7 +1570,20 @@
       offscreenCanvas.height = h;
       offscreenCtx.drawImage(currentSourceImage, 0, 0, w, h);
       const data = offscreenCtx.getImageData(0, 0, w, h).data;
+      const res = detectFiducialCornersFromRGBA(data, w, h);
+      appState.corners = res.corners;
+      runOMRGrading();
+      if (!silent) {
+        showToast(
+          res.okCount === 4
+            ? "Đã tự động bắt chuẩn 4/4 ô vuông lưới nội bộ!"
+            : `Đã bắt ${res.okCount}/4 góc — kéo nhẹ góc còn lại nếu cần.`
+        );
+      }
+      return res.okCount;
+    }
 
+    function detectFiducialCornersFromRGBA(data, w, h) {
       // Integral grayscale image for O(1) box mean queries
       const gray = new Uint32Array((w + 1) * (h + 1));
       const stride = w + 1;
@@ -1910,21 +1927,15 @@
         }
       }
 
-      appState.corners = {
-        tl: { x: finalCorners.tl.x, y: finalCorners.tl.y },
-        tr: { x: finalCorners.tr.x, y: finalCorners.tr.y },
-        bl: { x: finalCorners.bl.x, y: finalCorners.bl.y },
-        br: { x: finalCorners.br.x, y: finalCorners.br.y }
+      return {
+        corners: {
+          tl: { x: finalCorners.tl.x, y: finalCorners.tl.y },
+          tr: { x: finalCorners.tr.x, y: finalCorners.tr.y },
+          bl: { x: finalCorners.bl.x, y: finalCorners.bl.y },
+          br: { x: finalCorners.br.x, y: finalCorners.br.y }
+        },
+        okCount
       };
-      runOMRGrading();
-      if (!silent) {
-        showToast(
-          okCount === 4
-            ? "Đã tự động bắt chuẩn 4/4 ô vuông lưới nội bộ!"
-            : `Đã bắt ${okCount}/4 góc — kéo nhẹ góc còn lại nếu cần.`
-        );
-      }
-      return okCount;
     }
 
     function initCanvasDragEvents() {
@@ -2071,10 +2082,144 @@
             wrap.webkitRequestFullscreen();
           }
         } catch (e) {}
-        showToast("Đã mở Camera toàn màn hình! Căn 4 góc vùng chấm vào khung xanh rồi bấm Chụp.");
+        startLiveCornerLoop();
+        showToast("Đã mở Camera! Đưa 4 góc vào khung, máy sẽ tự khóa & chụp.");
       } catch (err) {
-        showToast("Trình duyệt đang chặn quyền Camera trực tiếp. Hãy bấm nút 'Chụp / Chọn Ảnh Phiếu' bên cạnh để mở Camera điện thoại!", true);
+        showToast("Trình duyệt đang chặn quyền Camera trực tiếp. Hãy bấm nút 'Chụp / Chọn Ảnh' bên cạnh để mở Camera điện thoại!", true);
       }
+    }
+
+    let _liveLoopTimer = null;
+    let _rtCanvas = null;
+    let _rtCtx = null;
+    let _prevLiveCorners = null;
+    let _stableCornerHits = 0;
+
+    function toggleAutoCapture() {
+      appState.autoCaptureEnabled = !(appState.autoCaptureEnabled !== false);
+      const btn = document.getElementById("btnAutoCaptureToggle");
+      if (btn) {
+        btn.textContent = appState.autoCaptureEnabled ? "Tự chụp: BẬT" : "Tự chụp: TẮT";
+        btn.className = appState.autoCaptureEnabled
+          ? "px-2.5 py-1.5 rounded-xl bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold"
+          : "px-2.5 py-1.5 rounded-xl bg-slate-800/90 text-slate-300 border border-slate-700 text-xs font-semibold";
+      }
+    }
+
+    function stopLiveCornerLoop() {
+      if (_liveLoopTimer) { clearTimeout(_liveLoopTimer); _liveLoopTimer = null; }
+      _prevLiveCorners = null;
+      _stableCornerHits = 0;
+      const ov = document.getElementById("cameraOverlayCanvas");
+      if (ov) { const octx = ov.getContext("2d"); octx && octx.clearRect(0, 0, ov.width, ov.height); }
+    }
+
+    function startLiveCornerLoop() {
+      stopLiveCornerLoop();
+      appState.autoCaptureLocked = false;
+      if (appState.autoCaptureEnabled === undefined) appState.autoCaptureEnabled = true;
+      if (!_rtCanvas) {
+        _rtCanvas = document.createElement("canvas");
+        _rtCtx = _rtCanvas.getContext("2d", { willReadFrequently: true });
+      }
+      const tick = () => {
+        if (!appState.cameraStream || appState.autoCaptureLocked) return;
+        const video = document.getElementById("cameraVideo");
+        const ov = document.getElementById("cameraOverlayCanvas");
+        const statusEl = document.getElementById("liveCamStatusText");
+        if (video && video.readyState >= 2 && video.videoWidth > 0 && ov) {
+          const vw = video.videoWidth, vh = video.videoHeight;
+          const rw = 400;
+          const rh = Math.max(200, Math.round((rw * vh) / vw));
+          if (_rtCanvas.width !== rw || _rtCanvas.height !== rh) {
+            _rtCanvas.width = rw; _rtCanvas.height = rh;
+          }
+          _rtCtx.drawImage(video, 0, 0, rw, rh);
+          const rgba = _rtCtx.getImageData(0, 0, rw, rh).data;
+          const res = detectFiducialCornersFromRGBA(rgba, rw, rh);
+
+          // Resize overlay canvas to match displayed CSS size
+          const cw = ov.clientWidth || window.innerWidth;
+          const ch = ov.clientHeight || window.innerHeight;
+          if (ov.width !== cw || ov.height !== ch) { ov.width = cw; ov.height = ch; }
+          const octx = ov.getContext("2d");
+          octx.clearRect(0, 0, cw, ch);
+
+          // Compute object-contain video rect on screen
+          const scale = Math.min(cw / rw, ch / rh);
+          const ox = (cw - rw * scale) / 2;
+          const oy = (ch - rh * scale) / 2;
+          const mapPt = p => ({ x: ox + p.x * scale, y: oy + p.y * scale });
+
+          const { tl, tr, bl, br } = res.corners;
+          const wt = Math.hypot(tr.x - tl.x, tr.y - tl.y);
+          const wb = Math.hypot(br.x - bl.x, br.y - bl.y);
+          const hl = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+          const hr = Math.hypot(br.x - tr.x, br.y - tr.y);
+          const ar = Math.min(wt, wb) > 0.22 * rw ? (hl + hr) / (wt + wb) : 0;
+          const validGeo = res.okCount === 4 && ar >= 1.15 && ar <= 1.75;
+
+          if (validGeo) {
+            if (_prevLiveCorners) {
+              const dMax = Math.max(
+                Math.hypot(tl.x - _prevLiveCorners.tl.x, tl.y - _prevLiveCorners.tl.y),
+                Math.hypot(tr.x - _prevLiveCorners.tr.x, tr.y - _prevLiveCorners.tr.y),
+                Math.hypot(bl.x - _prevLiveCorners.bl.x, bl.y - _prevLiveCorners.bl.y),
+                Math.hypot(br.x - _prevLiveCorners.br.x, br.y - _prevLiveCorners.br.y)
+              );
+              _stableCornerHits = dMax <= 0.032 * rw ? _stableCornerHits + 1 : 1;
+            } else {
+              _stableCornerHits = 1;
+            }
+            _prevLiveCorners = { tl, tr, bl, br };
+
+            const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
+            const isLocked = _stableCornerHits >= 2;
+            const col = isLocked ? "#10b981" : "#fbbf24";
+
+            octx.save();
+            octx.strokeStyle = col;
+            octx.lineWidth = isLocked ? 4 : 2.5;
+            octx.fillStyle = isLocked ? "rgba(16,185,129,0.12)" : "rgba(251,191,36,0.08)";
+            octx.beginPath();
+            octx.moveTo(pTL.x, pTL.y);
+            octx.lineTo(pTR.x, pTR.y);
+            octx.lineTo(pBR.x, pBR.y);
+            octx.lineTo(pBL.x, pBL.y);
+            octx.closePath();
+            octx.fill();
+            octx.stroke();
+
+            for (const p of [pTL, pTR, pBL, pBR]) {
+              octx.beginPath();
+              octx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+              octx.fillStyle = col;
+              octx.fill();
+              octx.strokeStyle = "#ffffff";
+              octx.lineWidth = 2;
+              octx.stroke();
+            }
+            octx.restore();
+
+            if (statusEl) {
+              statusEl.textContent = isLocked
+                ? "✓ Đã khóa 4/4 góc! Đang tự chụp & chấm..."
+                : "Đã bắt 4 góc — Giữ yên máy...";
+            }
+            if (isLocked && appState.autoCaptureEnabled !== false) {
+              appState.autoCaptureLocked = true;
+              captureFromLiveCamera();
+              return;
+            }
+          } else {
+            _stableCornerHits = 0;
+            _prevLiveCorners = null;
+            if (statusEl) statusEl.textContent = "Đưa trọn Vùng Chấm vào khung — tự chụp khi đủ 4 góc";
+          }
+        }
+        _liveLoopTimer = setTimeout(tick, 140);
+      };
+      _liveLoopTimer = setTimeout(tick, 300);
     }
 
     function toggleNativeFullscreenCamera() {
@@ -2104,6 +2249,7 @@
     }
 
     function stopLiveCamera() {
+      stopLiveCornerLoop();
       if (appState.cameraStream) {
         appState.cameraStream.getTracks().forEach(t => t.stop());
         appState.cameraStream = null;

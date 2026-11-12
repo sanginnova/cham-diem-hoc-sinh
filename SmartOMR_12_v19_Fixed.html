@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.9 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v21.0 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.9</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.0</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -230,49 +230,39 @@
           <canvas id="cameraOverlayCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-[5]"></canvas>
           <div class="scan-laser"></div>
 
-          <!-- Full-Screen AR Alignment Overlay & HUD -->
-          <div class="relative z-10 w-full h-full pointer-events-none flex flex-col items-center justify-between p-3 sm:p-5">
-            <!-- Top HUD Bar -->
-            <div class="pointer-events-auto w-full max-w-2xl flex items-center justify-between gap-2 bg-slate-950/80 backdrop-blur-md px-3.5 py-2.5 rounded-2xl border border-slate-800/90 shadow-xl">
-              <div class="flex items-center gap-2 min-w-0">
+          <!-- Full-Screen AR Alignment Overlay & Floating Controls (Zero black dock - 100% Edge-to-Edge Camera View) -->
+          <div class="relative z-10 w-full h-full pointer-events-none flex flex-col justify-between p-3 sm:p-4">
+            <!-- Top Floating Minimalist Bar -->
+            <div class="w-full flex items-center justify-between gap-2 pt-1">
+              <div class="pointer-events-auto flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 shadow-lg">
                 <span id="liveCamDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
-                <div class="min-w-0">
-                  <div class="text-xs sm:text-sm font-bold text-white leading-tight truncate">SmartOMR Live</div>
-                  <div id="liveCamStatusText" class="text-[11px] text-emerald-300 truncate">Đưa trọn Vùng Chấm vào khung — tự chụp khi đủ 4 góc</div>
-                </div>
+                <span id="liveCamStatusText" class="text-xs font-semibold text-emerald-300 truncate max-w-[200px] sm:max-w-xs">Canh 4 góc đen Vùng Chấm</span>
               </div>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <button id="btnAutoCaptureToggle" onclick="toggleAutoCapture()" class="px-2.5 py-1.5 rounded-xl bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold">
+              <div class="pointer-events-auto flex items-center gap-2">
+                <button id="btnAutoCaptureToggle" onclick="toggleAutoCapture()" class="px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-emerald-500/40 text-emerald-300 text-xs font-semibold shadow-lg active:scale-95 transition">
                   Tự chụp: BẬT
                 </button>
-                <button id="btnFullscreenCam" onclick="toggleNativeFullscreenCamera()" class="hidden sm:flex px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-sky-300 border border-sky-500/30 text-xs font-semibold items-center gap-1" title="Phóng toàn màn hình thiết bị">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
-                  <span id="lblFullscreenCam">Toàn màn hình</span>
-                </button>
-                <button id="btnCloseFullCam" onclick="stopLiveCamera()" class="px-3 py-1.5 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1 shadow">
-                  <span>✕ Đóng</span>
+                <button id="btnCloseFullCam" onclick="stopLiveCamera()" class="w-9 h-9 rounded-full bg-black/60 backdrop-blur-md hover:bg-rose-600/90 text-white text-base font-extrabold flex items-center justify-center border border-white/20 shadow-lg active:scale-95 transition" title="Đóng camera">
+                  ✕
                 </button>
               </div>
             </div>
 
-            <!-- Center Spacer (4 large alignment corner boxes are drawn live on #cameraOverlayCanvas) -->
+            <!-- Center Spacer (Overlay canvas draws target alignment boxes & name box directly here) -->
             <div class="flex-1"></div>
 
-            <!-- Bottom Full-Screen Camera Shutter Controls -->
-            <div class="pointer-events-auto w-full max-w-xl flex items-center justify-around gap-3 bg-slate-950/85 backdrop-blur-md px-5 py-3 rounded-3xl border border-slate-800 shadow-2xl">
-              <button id="btnSwitchCamFacing" onclick="switchCameraFacing()" class="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-semibold text-slate-200 flex items-center gap-1.5 border border-slate-700">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                <span>Đổi Camera</span>
+            <!-- Bottom Floating Action Buttons (No opaque dock, 100% transparent edge-to-edge video) -->
+            <div class="pointer-events-auto w-full flex items-center justify-center gap-6 sm:gap-8 pb-4 sm:pb-6">
+              <button id="btnSwitchCamFacing" onclick="switchCameraFacing()" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/25 text-white flex items-center justify-center hover:bg-black/75 active:scale-90 shadow-xl transition" title="Đổi camera trước/sau">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
               </button>
 
-              <button id="btnCaptureFrame" onclick="captureFromLiveCamera()" class="px-7 py-3.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold text-sm sm:text-base shadow-xl shadow-emerald-500/40 flex items-center gap-2.5 active:scale-95 transition">
-                <span class="w-4 h-4 rounded-full bg-slate-950 border-2 border-white"></span>
-                <span>Chụp &amp; Chấm Ngay</span>
+              <button id="btnCaptureFrame" onclick="captureFromLiveCamera()" class="w-16 h-16 sm:w-18 sm:h-18 rounded-full border-4 border-white/95 bg-emerald-500 hover:bg-emerald-400 active:scale-90 shadow-2xl flex items-center justify-center transition" title="Chụp &amp; Chấm Ngay">
+                <span class="w-6 h-6 rounded-full bg-white shadow-md"></span>
               </button>
 
-              <button id="btnTorchToggle" onclick="toggleCameraTorch()" class="px-3.5 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm font-semibold text-amber-300 flex items-center gap-1.5 border border-slate-700">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                <span>Đèn Flash</span>
+              <button id="btnTorchToggle" onclick="toggleCameraTorch()" class="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/25 text-amber-300 flex items-center justify-center hover:bg-black/75 active:scale-90 shadow-xl transition" title="Bật/Tắt Đèn Flash">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
               </button>
             </div>
           </div>
@@ -2331,8 +2321,8 @@
       if (btn) {
         btn.textContent = appState.autoCaptureEnabled ? "Tự chụp: BẬT" : "Tự chụp: TẮT";
         btn.className = appState.autoCaptureEnabled
-          ? "px-2.5 py-1.5 rounded-xl bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-semibold"
-          : "px-2.5 py-1.5 rounded-xl bg-slate-800/90 text-slate-300 border border-slate-700 text-xs font-semibold";
+          ? "px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-emerald-500/40 text-emerald-300 text-xs font-semibold shadow-lg active:scale-95 transition"
+          : "px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-slate-700 text-slate-300 text-xs font-semibold shadow-lg active:scale-95 transition";
       }
     }
 
@@ -2391,19 +2381,29 @@
 
           const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
 
-          // 4 Large Corner Alignment Target Boxes fitted comfortably INSIDE the rendered video rect (vidW x vidH)
+          // 4 Corner Alignment Target Boxes & Top Student Name Box
+          // Leave the top ~30% of camera exclusively for Student Name & Header
           const vidW = rw * scale, vidH = rh * scale;
-          const guideAspect = 549.0 / 807.0;
-          const maxGuideW = vidW * 0.72;
-          const maxGuideH = vidH * 0.76;
-          const guideH = Math.min(maxGuideH, maxGuideW / guideAspect);
-          const guideW = guideH * guideAspect;
+          const guideAspect = 549.0 / 807.0; // ~0.6803
+
+          // Set guide width compact (~50%-52% of video width) so user captures the entire A4 sheet with name at top
+          let guideW = Math.min(vidW * 0.52, vidH * 0.35);
+          let guideH = guideW / guideAspect; // guideW * 1.47
+          if (guideH > vidH * 0.48) {
+            guideH = vidH * 0.48;
+            guideW = guideH * guideAspect;
+          }
+
           const cxMid = ox + vidW * 0.50;
-          const cyMid = oy + vidH * 0.53;
-          const gx0 = cxMid - guideW / 2, gx1 = cxMid + guideW / 2;
-          const gy0 = cyMid - guideH / 2, gy1 = cyMid + guideH / 2;
-          const boxW = Math.round(guideW * 0.22);
-          const boxH = Math.round(guideH * 0.14);
+          // Position OMR guide in lower-mid zone: leaves top 28%-32% of video for Student Name, Class, School Header
+          const gy0 = oy + Math.max(vidH * 0.28, vidH * 0.88 - guideH - 45);
+          const gy1 = gy0 + guideH;
+          const gx0 = cxMid - guideW / 2;
+          const gx1 = cxMid + guideW / 2;
+
+          // Target corner boxes with generous capture tolerance so it's easy and responsive to lock
+          const boxW = Math.round(guideW * 0.30);
+          const boxH = Math.round(guideH * 0.18);
           const boxes = {
             tl: { x: gx0 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "1" },
             tr: { x: gx1 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "2" },
@@ -2419,18 +2419,41 @@
           const hitCount = [hitTL, hitTR, hitBL, hitBR].filter(Boolean).length;
           const allInside = hitCount === 4;
 
-          // Draw subtle outer guide dashed frame + 4 large corner alignment boxes
           octx.save();
+
+          // 1. Draw dedicated Student Name Header Guide Box above OMR area
+          const nameBoxW = guideW * 1.10;
+          const nameBoxH = Math.min(guideH * 0.32, gy0 - oy - 14);
+          const nameBoxX = cxMid - nameBoxW / 2;
+          const nameBoxY = gy0 - nameBoxH - 8;
+
+          if (nameBoxH > 22) {
+            octx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+            octx.lineWidth = 1.5;
+            octx.setLineDash([5, 5]);
+            octx.strokeRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH);
+            octx.setLineDash([]);
+            octx.fillStyle = "rgba(56, 189, 248, 0.06)";
+            octx.fillRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH);
+
+            octx.fillStyle = "rgba(186, 230, 253, 0.90)";
+            octx.font = "bold 11px Inter, sans-serif";
+            octx.textAlign = "center";
+            octx.fillText("VÙNG HỌ TÊN & LỚP (TỰ ĐỘNG LẤY TÊN)", cxMid, nameBoxY + 16);
+          }
+
+          // 2. Draw subtle outer guide dashed frame around OMR area
           octx.strokeStyle = allInside ? "rgba(16,185,129,0.55)" : "rgba(255,255,255,0.22)";
           octx.lineWidth = 1.5;
           octx.setLineDash([6, 6]);
           octx.strokeRect(gx0, gy0, guideW, guideH);
           octx.setLineDash([]);
 
+          // 3. Draw 4 Corner Alignment Target Boxes
           for (const k of ["tl", "tr", "bl", "br"]) {
             const b = boxes[k];
             const ok = hitsMap[k];
-            octx.fillStyle = ok ? "rgba(16,185,129,0.18)" : "rgba(239,68,68,0.08)";
+            octx.fillStyle = ok ? "rgba(16,185,129,0.20)" : "rgba(239,68,68,0.08)";
             octx.fillRect(b.x, b.y, b.w, b.h);
             octx.strokeStyle = ok ? "#10b981" : "#ef4444";
             octx.lineWidth = ok ? 3.5 : 2.5;
@@ -2477,8 +2500,8 @@
             const isLocked = _stableCornerHits >= 2;
             if (statusEl) {
               statusEl.textContent = isLocked
-                ? "✓ Đã lọt đủ 4/4 ô căn! Đang tự chụp & chấm..."
-                : "✓ Đủ 4/4 ô căn — Giữ yên máy...";
+                ? "✓ Đã đủ 4 góc! Đang chụp & lấy tên..."
+                : "✓ Đã lọt 4 góc — Giữ yên máy...";
             }
             if (isLocked && appState.autoCaptureEnabled !== false) {
               appState.autoCaptureLocked = true;
@@ -2496,8 +2519,8 @@
             _prevLiveCorners = null;
             if (statusEl) {
               statusEl.textContent = validGeo
-                ? `Đưa 4 góc đen lọt vào 4 ô đỏ (${hitCount}/4 ô xanh)`
-                : "Đưa 4 góc đen của Vùng Chấm lọt vào 4 ô đỏ";
+                ? `Đưa 4 góc đen vào 4 ô (${hitCount}/4 ô xanh)`
+                : "Đưa 4 góc đen vào 4 ô căn bên dưới";
             }
           }
         }

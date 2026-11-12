@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.7 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.8 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -90,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.7</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.8</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -164,12 +165,32 @@
           <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">2. Trên Điện Thoại (Gửi bài)</span>
           <span id="syncClientBadge" class="text-[11px] text-slate-400">Chưa nối</span>
         </div>
+        <button onclick="startQrRoomScanner()" class="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5a2 2 0 012-2h2m10 0h2a2 2 0 012 2v2m0 10v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M7 7h3v3H7V7zm7 0h3v3h-3V7zm-7 7h3v3H7v-3zm7 3h3m-3-3h3"/></svg>
+          <span>Quét Mã QR Trên Web Máy Tính</span>
+        </button>
         <div class="flex items-center gap-2">
-          <input id="inpJoinRoomCode" type="tel" maxlength="4" placeholder="Nhập mã 4 số (vd: 4829)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono-code text-white focus:border-sky-500 focus:outline-none" />
-          <button onclick="connectMobileToHost()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold whitespace-nowrap">Kết nối PC</button>
+          <input id="inpJoinRoomCode" type="tel" maxlength="4" placeholder="Hoặc nhập 4 số (vd: 4829)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono-code text-white focus:border-sky-500 focus:outline-none" />
+          <button onclick="connectMobileToHost()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-bold whitespace-nowrap">Kết nối</button>
         </div>
+        <button onclick="pushAllRosterToHost()" class="w-full py-1.5 px-3 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/70 text-emerald-300 border border-emerald-700/40 text-[11px] font-semibold">
+          📤 Đẩy toàn bộ Bảng điểm hiện có sang PC
+        </button>
       </div>
     </div>
+  </div>
+
+  <!-- Built-in QR Code Scanner Overlay (for Mobile to scan Desktop WebApp QR) -->
+  <div id="qrScanOverlay" class="hidden fixed inset-0 z-[60] bg-black flex flex-col items-center justify-between p-4">
+    <div class="w-full max-w-md flex items-center justify-between bg-slate-900/90 border border-slate-700 rounded-2xl px-4 py-2.5 z-10">
+      <div class="text-xs sm:text-sm font-bold text-white">Hướng Camera vào Mã QR trên Máy Tính</div>
+      <button onclick="stopQrRoomScanner()" class="px-3 py-1 rounded-lg bg-rose-600 text-white text-xs font-bold">✕ Đóng</button>
+    </div>
+    <div class="relative w-72 h-72 rounded-2xl border-2 border-emerald-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] z-10 flex items-center justify-center">
+      <div class="w-full h-0.5 bg-emerald-400/80 animate-pulse"></div>
+    </div>
+    <video id="qrScanVideo" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+    <div class="text-xs text-emerald-300 bg-slate-900/85 px-4 py-2 rounded-full border border-slate-700 z-10">Tự động kết nối ngay khi thấy mã QR</div>
   </div>
 
   <!-- MAIN CONTENT AREA -->
@@ -3215,6 +3236,72 @@
       }
     }
 
+    let _qrScanStream = null;
+    let _qrScanTimer = null;
+
+    function stopQrRoomScanner() {
+      if (_qrScanTimer) { clearTimeout(_qrScanTimer); _qrScanTimer = null; }
+      if (_qrScanStream) {
+        _qrScanStream.getTracks().forEach(t => t.stop());
+        _qrScanStream = null;
+      }
+      document.getElementById("qrScanOverlay")?.classList.add("hidden");
+    }
+
+    async function startQrRoomScanner() {
+      unlockAudioCtx();
+      if (typeof jsQR === "undefined") {
+        showToast("Thư viện quét QR đang tải, thử lại sau 2 giây!", true);
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        _qrScanStream = stream;
+        const vid = document.getElementById("qrScanVideo");
+        vid.srcObject = stream;
+        document.getElementById("qrScanOverlay")?.classList.remove("hidden");
+
+        const c = document.createElement("canvas");
+        const ctx = c.getContext("2d", { willReadFrequently: true });
+        const scanTick = () => {
+          if (!_qrScanStream) return;
+          if (vid.readyState >= 2 && vid.videoWidth > 0) {
+            const w = Math.min(480, vid.videoWidth);
+            const h = Math.round((w * vid.videoHeight) / vid.videoWidth);
+            c.width = w; c.height = h;
+            ctx.drawImage(vid, 0, 0, w, h);
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const qr = jsQR(imgData.data, w, h, { inversionAttempts: "dontInvert" });
+            if (qr && qr.data) {
+              const m = qr.data.match(/[?&]room=(\d{4})/) || qr.data.match(/^(\d{4})$/);
+              if (m) {
+                stopQrRoomScanner();
+                playScanCompleteBeep(4);
+                connectMobileToHost(m[1]);
+                return;
+              }
+            }
+          }
+          _qrScanTimer = setTimeout(scanTick, 120);
+        };
+        _qrScanTimer = setTimeout(scanTick, 250);
+      } catch (e) {
+        showToast("Không mở được camera để quét QR. Hãy nhập mã 4 số trực tiếp!", true);
+      }
+    }
+
+    function pushAllRosterToHost() {
+      if (_syncMode !== "client" || !_syncClientConn || !_syncClientConn.open) {
+        showToast("Hãy kết nối với Máy tính trước khi gửi!", true);
+        return;
+      }
+      _syncClientConn.send({ type: "SYNC_ROSTER_BATCH", roster: appState.roster });
+      showToast(`Đã đẩy ${appState.roster.length} bài sang Máy tính!`);
+    }
+
     function openSyncModal() {
       const code = getSavedRoomCode();
       const codeEl = document.getElementById("syncHostCodeDisplay");
@@ -3266,8 +3353,9 @@
           updateSyncPill("connected", `Đã nối ${_syncConns.length} ĐT`);
           if (hostBadge) hostBadge.textContent = `Đã kết nối ${_syncConns.length} ĐT`;
           showToast("Điện thoại đã kết nối real-time với Máy tính!");
-          // Push current exam keys to phone
-          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys });
+          // Push current exam keys & class roster to phone
+          const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
+          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText });
         });
         conn.on("data", data => handleIncomingSyncMessage(data, conn));
         conn.on("close", () => {
@@ -3387,9 +3475,15 @@
       if (msg.type === "SYNC_KEYS" && msg.examKeys) {
         appState.examKeys = { ...DEFAULT_EXAM_KEYS, ...msg.examKeys };
         try { localStorage.setItem("smartomr_exam_keys_v19", JSON.stringify(appState.examKeys)); } catch (e) {}
+        if (typeof msg.classListText === "string" && msg.classListText.trim()) {
+          const txt = document.getElementById("txtClassRosterList");
+          if (txt) txt.value = msg.classListText;
+          try { localStorage.setItem("smartomr_class_list_v19", msg.classListText); } catch (e) {}
+          refreshNameDatalist();
+        }
         renderExamKeysTab();
         recalculateScoresFromState();
-        showToast("Đã đồng bộ bộ Mã Đề mới từ Máy tính!");
+        showToast("Đã đồng bộ Mã Đề & Danh sách lớp từ Máy tính!");
       } else if (msg.type === "SYNC_ROSTER_BATCH" && Array.isArray(msg.roster)) {
         let added = 0;
         for (const item of msg.roster) {

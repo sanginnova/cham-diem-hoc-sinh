@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.9 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.0 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.9</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.0</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -1174,6 +1174,7 @@
           </div>
         `;
       }).join("");
+      if (appState.currentScan.autoSaved) saveCurrentResultToRoster(true);
     }
 
     function overrideP1Answer(qIdx, newOpt) {
@@ -1198,6 +1199,7 @@
       document.getElementById("resStudentTitle").textContent =
         `${appState.currentScan.studentName || "Học sinh"} — ${appState.currentScan.studentClass || "12B1"}`;
       renderOMRCanvas();
+      if (appState.currentScan.autoSaved) saveCurrentResultToRoster(true);
     }
 
     function onManualExamCodeChange() {
@@ -2316,6 +2318,8 @@
         const h = capturedImg.naturalHeight || capturedImg.height;
         const sx = w / REF_WIDTH;
         const sy = h / REF_HEIGHT;
+        appState.currentScan.scanId = Date.now() + Math.random();
+        appState.currentScan.autoSaved = true;
         appState.currentScan.studentName = "";
         const nameInp = document.getElementById("inpStudentName");
         if (nameInp) nameInp.value = "";
@@ -2350,12 +2354,13 @@
             okCount = 4;
           }
         }
+        saveCurrentResultToRoster(true);
         playScanCompleteBeep(okCount);
         setFullScreenCalibrationUI(true);
         showToast(
           okCount === 4
-            ? "Đã chụp và tự động bắt chuẩn 4/4 góc Vùng Chấm!"
-            : `Đã chụp (bắt ${okCount}/4 góc) — kéo nhẹ góc còn lại nếu cần.`
+            ? `Đã tự lưu (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ) — chuẩn 4/4 góc!`
+            : `Đã chụp & lưu (bắt ${okCount}/4 góc) — kéo nhẹ góc còn lại nếu cần.`
         );
       };
       capturedImg.src = tempCanvas.toDataURL("image/jpeg", 0.92);
@@ -2374,6 +2379,8 @@
           const sx = w / REF_WIDTH;
           const sy = h / REF_HEIGHT;
           // Reset stale student info so previous scan name never leaks onto new photo
+          appState.currentScan.scanId = Date.now() + Math.random();
+          appState.currentScan.autoSaved = true;
           appState.currentScan.studentName = "";
           const nameInp = document.getElementById("inpStudentName");
           if (nameInp) nameInp.value = "";
@@ -2388,12 +2395,13 @@
             br: { x: REF_CORNERS.br.x * sx, y: REF_CORNERS.br.y * sy }
           };
           const okCount = autoDetectFiducialCorners(true);
+          saveCurrentResultToRoster(true);
           playScanCompleteBeep(okCount);
           setFullScreenCalibrationUI(true);
           showToast(
             okCount === 4
-              ? `Đã nạp "${file.name}" và tự động bắt chuẩn 4/4 góc!`
-              : `Đã nạp "${file.name}" (bắt ${okCount}/4 góc) — kiểm tra/kéo 4 góc nếu cần!`
+              ? `Đã nạp & tự lưu "${file.name}" (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ)!`
+              : `Đã nạp & lưu "${file.name}" (bắt ${okCount}/4 góc) — kiểm tra/kéo 4 góc nếu cần!`
           );
         };
         img.src = e.target.result;
@@ -2582,12 +2590,27 @@
     // =========================================================================
     // 9. CLASS ROSTER TABLE, CHART.JS ANALYTICS & EXPORT (TAB 3)
     // =========================================================================
-    function saveCurrentResultToRoster() {
+    function saveCurrentResultToRoster(silent = false) {
       const scan = appState.currentScan;
       const code = getEffectiveExamCode();
+      const scanId = scan.scanId || (Date.now() + Math.random());
+      scan.scanId = scanId;
+      scan.autoSaved = true;
+
+      let existingIdx = appState.roster.findIndex(r => r.id === scanId);
+      const rawName = (scan.studentName || "").trim();
+      if (existingIdx < 0 && rawName) {
+        existingIdx = appState.roster.findIndex(
+          r => r.name.toLowerCase() === rawName.toLowerCase() && r.className.toLowerCase() === (scan.studentClass || "12B1").trim().toLowerCase()
+        );
+      }
+      const fallbackName = existingIdx >= 0
+        ? appState.roster[existingIdx].name
+        : `Phiếu #${appState.roster.length + 1} (MĐ ${code})`;
+
       const entry = {
-        id: Date.now() + Math.random(),
-        name: (scan.studentName || "Học sinh").trim(),
+        id: scanId,
+        name: rawName || fallbackName,
         className: (scan.studentClass || "12B1").trim(),
         examCode: code,
         p1: scan.scores.p1,
@@ -2599,10 +2622,6 @@
         mistakes: scan.mistakesText
       };
 
-      // Update if same student + examCode exists, else push
-      const existingIdx = appState.roster.findIndex(
-        r => r.name.toLowerCase() === entry.name.toLowerCase() && r.className.toLowerCase() === entry.className.toLowerCase()
-      );
       if (existingIdx >= 0) {
         appState.roster[existingIdx] = entry;
       } else {
@@ -2611,7 +2630,9 @@
 
       persistRoster();
       renderRosterTable();
-      showToast(`Đã lưu bài của "${entry.name}" (${entry.totalTN.toFixed(2)}/7.0đ) vào Bảng điểm lớp!`);
+      if (!silent) {
+        showToast(`Đã lưu bài của "${entry.name}" (${entry.totalTN.toFixed(2)}/7.0đ) vào Bảng điểm lớp!`);
+      }
     }
 
     function persistRoster() {
@@ -2917,22 +2938,37 @@
         }
       } catch (e) {}
 
-      // Seed initial roster with the grounded sample student from the uploaded image
-      appState.roster = [
-        {
-          id: 1,
-          name: "Đào Duy Khánh",
-          className: "12B1",
-          examCode: "104",
-          p1: 2.50,
-          p2: 1.10,
-          p3: 2.00,
-          essay: 0.00,
-          totalTN: 5.60,
-          grandTotal: 5.60,
-          mistakes: "P1: C3 (D→B), C12 (A→D) | P2: C13b (S→Đ), C13c (Đ→S), C13d (Đ→S) | P3: Đúng 4/4"
+      // Restore saved roster from localStorage if available
+      let restoredRoster = false;
+      try {
+        const savedRoster = localStorage.getItem("smartomr_roster_v19");
+        if (savedRoster) {
+          const parsedRoster = JSON.parse(savedRoster);
+          if (Array.isArray(parsedRoster)) {
+            appState.roster = parsedRoster;
+            restoredRoster = true;
+          }
         }
-      ];
+      } catch (e) {}
+
+      // Seed initial roster only on first launch
+      if (!restoredRoster) {
+        appState.roster = [
+          {
+            id: 1,
+            name: "Đào Duy Khánh",
+            className: "12B1",
+            examCode: "104",
+            p1: 2.50,
+            p2: 1.10,
+            p3: 2.00,
+            essay: 0.00,
+            totalTN: 5.60,
+            grandTotal: 5.60,
+            mistakes: "P1: C3 (D→B), C12 (A→D) | P2: C13b (S→Đ), C13c (Đ→S), C13d (Đ→S) | P3: Đúng 4/4"
+          }
+        ];
+      }
 
       initCanvasDragEvents();
       renderExamKeysTab();

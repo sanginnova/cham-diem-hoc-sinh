@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.6 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.7 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -90,7 +90,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.6</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.7</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -2370,22 +2370,24 @@
 
           const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
 
-          // 4 Large Corner Alignment Target Boxes centered in viewfinder (aspect 549/807 = 0.6803)
-          const availW = Math.min(cw * 0.90, 440);
-          const availH = Math.max(220, ch - 190);
+          // 4 Large Corner Alignment Target Boxes fitted comfortably INSIDE the rendered video rect (vidW x vidH)
+          const vidW = rw * scale, vidH = rh * scale;
           const guideAspect = 549.0 / 807.0;
-          const guideH = Math.min(availH, availW / guideAspect);
+          const maxGuideW = vidW * 0.72;
+          const maxGuideH = vidH * 0.76;
+          const guideH = Math.min(maxGuideH, maxGuideW / guideAspect);
           const guideW = guideH * guideAspect;
-          const cxMid = cw / 2, cyMid = ch / 2 - 6;
+          const cxMid = ox + vidW * 0.50;
+          const cyMid = oy + vidH * 0.53;
           const gx0 = cxMid - guideW / 2, gx1 = cxMid + guideW / 2;
           const gy0 = cyMid - guideH / 2, gy1 = cyMid + guideH / 2;
-          const boxW = Math.round(guideW * 0.25);
-          const boxH = Math.round(guideH * 0.16);
+          const boxW = Math.round(guideW * 0.22);
+          const boxH = Math.round(guideH * 0.14);
           const boxes = {
-            tl: { x: gx0 - boxW * 0.45, y: gy0 - boxH * 0.45, w: boxW, h: boxH, label: "1" },
-            tr: { x: gx1 - boxW * 0.55, y: gy0 - boxH * 0.45, w: boxW, h: boxH, label: "2" },
-            bl: { x: gx0 - boxW * 0.45, y: gy1 - boxH * 0.55, w: boxW, h: boxH, label: "3" },
-            br: { x: gx1 - boxW * 0.55, y: gy1 - boxH * 0.55, w: boxW, h: boxH, label: "4" }
+            tl: { x: gx0 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "1" },
+            tr: { x: gx1 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "2" },
+            bl: { x: gx0 - boxW * 0.5, y: gy1 - boxH * 0.5, w: boxW, h: boxH, label: "3" },
+            br: { x: gx1 - boxW * 0.5, y: gy1 - boxH * 0.5, w: boxW, h: boxH, label: "4" }
           };
           const inBox = (pt, b) => pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h;
           const hitTL = validGeo && inBox(pTL, boxes.tl);

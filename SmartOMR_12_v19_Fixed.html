@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v21.1 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v21.2 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.1</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.2</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -3450,6 +3450,8 @@
           if (clientBadge) clientBadge.textContent = `Đã nối PC (${code})`;
           closeSyncModal();
           showToast(`Đã kết nối real-time tới Máy tính (${code})!`);
+          // Request exam keys, class roster, and Gemini API Key from Desktop host
+          conn.send({ type: "REQ_CONFIG" });
           // Sync existing roster items to desktop
           if (appState.roster.length > 0) {
             conn.send({ type: "SYNC_ROSTER_BATCH", roster: appState.roster });
@@ -3686,6 +3688,19 @@
           renderOMRCanvas();
         }
         showToast(`✨ Máy tính đã đọc tên học sinh: "${msg.studentName}"!`);
+      } else if (msg.type === "REQ_CONFIG") {
+        const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
+        const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+        if (conn && conn.open) {
+          conn.send({
+            type: "SYNC_KEYS",
+            examKeys: appState.examKeys,
+            classListText,
+            geminiApiKey
+          });
+        }
+      } else if (msg.type === "REQ_VISION_NAME" && msg.cropUrl) {
+        processDesktopGeminiVision(msg.scanId, msg.cropUrl, conn);
       }
     }
 
@@ -3808,9 +3823,10 @@
       offscreenCtx.drawImage(currentSourceImage, 0, 0, srcW, srcH);
       const srcData = offscreenCtx.getImageData(0, 0, srcW, srcH).data;
 
-      // Strip covering "2. Họ và tên thí sinh", "4. Lớp", and handwritten name above VÙNG CHẤM
-      const refX0 = 110, refX1 = 770, refY0 = 145, refY1 = 296;
-      const outW = 660, outH = 152;
+      // Strip covering student name header: "TRƯỜNG...", "2. Họ và tên thí sinh: [Tên viết tay]", "4. Lớp"
+      // Above the "Số phách | Mã đề thi | Giám thị" table (y: 38 -> 205)
+      const refX0 = 40, refX1 = 775, refY0 = 38, refY1 = 205;
+      const outW = 735, outH = 167;
       const outCanvas = document.createElement("canvas");
       outCanvas.width = outW;
       outCanvas.height = outH;
@@ -3866,7 +3882,7 @@
       if (wrap) wrap.classList.remove("hidden");
       if (imgEl) imgEl.src = cropUrl;
 
-      const geminiKey = (localStorage.getItem("smartomr_gemini_key") || "").trim();
+      let geminiKey = (appState.geminiApiKey || localStorage.getItem("smartomr_gemini_key") || "").trim();
       const applyDetectedName = (rawName, rawClass, sourceLabel) => {
         const matched = fuzzyMatchStudentName(rawName);
         const finalName = matched ? matched.name : (rawName || "").trim();
@@ -3877,18 +3893,23 @@
             const cInp = document.getElementById("inpStudentClass");
             if (cInp) cInp.value = rawClass.trim();
           }
+          appState.currentScan.studentName = finalName;
+          if (rawClass && rawClass.trim()) appState.currentScan.studentClass = rawClass.trim();
           updateStudentHeader();
+          renderOMRCanvas();
+          saveCurrentResultToRoster(true); // Automatically update roster & push to connected PC!
           if (statusEl) statusEl.textContent = `✓ ${sourceLabel}: ${finalName}`;
         } else if (statusEl) {
           statusEl.textContent = "Chưa đọc rõ chữ viết tay — nhìn ảnh trên hoặc bấm 🎤 để đọc!";
         }
       };
 
+      // 1. Direct Gemini Vision if key exists on phone
       if (geminiKey) {
-        if (statusEl) statusEl.textContent = "⏳ Gemini Vision đang đọc Họ tên...";
+        if (statusEl) statusEl.textContent = "⏳ Gemini Vision đang tự động đọc Họ tên...";
         try {
           const b64 = cropUrl.split(",")[1];
-          const rosterHint = getClassRosterNames().slice(0, 60).join(", ");
+          const rosterHint = getClassRosterNames().slice(0, 80).join(", ");
           const resp = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
             {
@@ -3898,7 +3919,7 @@
                 contents: [{
                   parts: [
                     { inline_data: { mime_type: "image/jpeg", data: b64 } },
-                    { text: `Đọc chính xác Họ và tên học sinh (chữ viết tay) và Lớp trong ảnh phiếu thi này. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON: {"name": "...", "className": "..."}` }
+                    { text: `Trong ảnh là phần thông tin đầu bài thi. Hãy đọc chính xác 'Họ và tên thí sinh' (chữ viết tay) và 'Lớp'. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON hợp lệ: {"name": "...", "className": "..."}` }
                   ]
                 }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0 }
@@ -3911,12 +3932,23 @@
           applyDetectedName(parsed.name || "", parsed.className || "", "Gemini AI");
           return;
         } catch (e) {
-          if (manualRetry) showToast("Lỗi gọi Gemini API Key, chuyển sang OCR offline...", true);
+          if (manualRetry) showToast("Lỗi gọi Gemini API Key, thử nhờ Máy tính...", true);
         }
       }
 
-      // Fallback: Browser Offline OCR (Tesseract.js) + Fuzzy Match against Class List
-      if (statusEl) statusEl.textContent = "⏳ Đang đọc tên (OCR trình duyệt)...";
+      // 2. Delegate to connected Desktop Host if phone has no key
+      if (_syncMode === "client" && _syncClientConn && _syncClientConn.open) {
+        if (statusEl) statusEl.textContent = "⏳ Đang nhờ Máy tính dùng Gemini Vision đọc tên...";
+        _syncClientConn.send({
+          type: "REQ_VISION_NAME",
+          scanId: appState.currentScan.scanId,
+          cropUrl: cropUrl
+        });
+        return;
+      }
+
+      // 3. Fallback: Browser Offline OCR (Tesseract.js) + Fuzzy Match against Class List
+      if (statusEl) statusEl.textContent = "⏳ Đang đọc tên (OCR offline)...";
       try {
         const T = await ensureTesseractLoaded();
         const result = await T.recognize(cropUrl, "vie");
@@ -3931,7 +3963,7 @@
         } else {
           // Pick longest plausible capitalized phrase (>= 2 words)
           const clean = rawTxt.split(/\n/).map(x => x.trim()).find(x => x.split(" ").length >= 2 && x.length >= 5) || "";
-          applyDetectedName(clean, "", "OCR");
+          applyDetectedName(clean, "", "OCR offline");
         }
       } catch (e) {
         if (statusEl) statusEl.textContent = "Nhìn ảnh trên để gõ hoặc bấm 🎤 đọc tên!";

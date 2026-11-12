@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.2 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.3 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
@@ -82,9 +83,13 @@
           </svg>
         </div>
         <div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.2</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.3</span>
+            <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
+              <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span id="syncStatusText">Kết nối PC/ĐT</span>
+            </button>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -116,6 +121,50 @@
   <div id="toastBox" class="fixed bottom-5 right-5 z-50 hidden max-w-sm bg-slate-900 border border-emerald-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
     <span id="toastIcon" class="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0"></span>
     <span id="toastMsg" class="text-xs sm:text-sm font-medium">Đã chấm xong!</span>
+  </div>
+
+  <!-- Real-Time Mobile <-> Desktop Sync Modal -->
+  <div id="syncModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-white">Đồng Bộ Real-Time ĐT ↔ Máy Tính</h3>
+          <p class="text-xs text-slate-400">Quét trên điện thoại → tự động hiện điểm &amp; ảnh sang máy tính</p>
+        </div>
+        <button onclick="closeSyncModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+      </div>
+
+      <!-- Desktop Host Section -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">1. Trên Máy Tính (Nhận bài)</span>
+          <span id="syncHostBadge" class="text-[11px] text-slate-400">Chưa bật</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <img id="syncQrImg" alt="QR Kết nối" class="w-24 h-24 rounded-lg bg-white p-1 shrink-0 hidden" />
+          <div class="flex-1 space-y-2">
+            <div class="text-xs text-slate-300">Mã phòng: <strong id="syncHostCodeDisplay" class="text-lg font-mono-code text-amber-400 tracking-widest">----</strong></div>
+            <p class="text-[11px] text-slate-400">Dùng Camera điện thoại quét mã QR hoặc nhập 4 số này ở mục bên dưới.</p>
+            <div class="flex gap-2">
+              <button onclick="startDesktopHost(null, false)" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Bật Nhận Bài</button>
+              <button onclick="regenerateHostRoom()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">Đổi mã</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Client Section -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">2. Trên Điện Thoại (Gửi bài)</span>
+          <span id="syncClientBadge" class="text-[11px] text-slate-400">Chưa nối</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="inpJoinRoomCode" type="tel" maxlength="4" placeholder="Nhập mã 4 số (vd: 4829)" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono-code text-white focus:border-sky-500 focus:outline-none" />
+          <button onclick="connectMobileToHost()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold whitespace-nowrap">Kết nối PC</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- MAIN CONTENT AREA -->
@@ -2593,6 +2642,7 @@
         localStorage.setItem("smartomr_exam_keys_v19", JSON.stringify(appState.examKeys));
       } catch (e) {}
       recalculateScoresFromState();
+      broadcastSyncKeys();
       showToast(`Đã lưu đáp án Mã đề ${appState.editingKeyCode} và cập nhật kết quả chấm!`);
     }
 
@@ -2639,6 +2689,7 @@
 
       persistRoster();
       renderRosterTable();
+      if (!_isApplyingRemoteSync) broadcastSyncEntry(entry);
       if (!silent) {
         showToast(`Đã lưu bài của "${entry.name}" (${entry.totalTN.toFixed(2)}/7.0đ) vào Bảng điểm lớp!`);
       }
@@ -2935,6 +2986,276 @@
     }
 
     // =========================================================================
+    // 10.5 REAL-TIME MOBILE <-> DESKTOP SYNC (WEBRTC PEERJS)
+    // =========================================================================
+    const PEER_PREFIX = "smartomr-cdn1-room-";
+    const PEER_CFG = {
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" }
+        ]
+      }
+    };
+    let _syncPeer = null;
+    let _syncConns = [];
+    let _syncClientConn = null;
+    let _syncMode = null; // "host" | "client"
+    let _isApplyingRemoteSync = false;
+
+    function getSavedRoomCode() {
+      let code = "";
+      try { code = localStorage.getItem("smartomr_room_code") || ""; } catch (e) {}
+      if (!/^\d{4}$/.test(code)) {
+        code = String(Math.floor(1000 + Math.random() * 9000));
+        try { localStorage.setItem("smartomr_room_code", code); } catch (e) {}
+      }
+      return code;
+    }
+
+    function updateSyncPill(state, text) {
+      const dot = document.getElementById("syncStatusDot");
+      const lbl = document.getElementById("syncStatusText");
+      if (lbl) lbl.textContent = text;
+      if (dot) {
+        dot.className = state === "connected"
+          ? "w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+          : (state === "waiting" ? "w-2 h-2 rounded-full bg-amber-400 animate-pulse" : "w-2 h-2 rounded-full bg-slate-400");
+      }
+    }
+
+    function openSyncModal() {
+      const code = getSavedRoomCode();
+      const codeEl = document.getElementById("syncHostCodeDisplay");
+      const qrEl = document.getElementById("syncQrImg");
+      if (codeEl) codeEl.textContent = code;
+      if (qrEl) {
+        const joinUrl = `${location.origin}${location.pathname}?room=${code}`;
+        qrEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(joinUrl)}`;
+        qrEl.classList.remove("hidden");
+      }
+      document.getElementById("syncModal")?.classList.remove("hidden");
+    }
+
+    function closeSyncModal() {
+      document.getElementById("syncModal")?.classList.add("hidden");
+    }
+
+    function regenerateHostRoom() {
+      const code = String(Math.floor(1000 + Math.random() * 9000));
+      try { localStorage.setItem("smartomr_room_code", code); } catch (e) {}
+      startDesktopHost(code, false);
+      openSyncModal();
+    }
+
+    function startDesktopHost(forcedCode = null, silent = false) {
+      if (typeof Peer === "undefined") {
+        if (!silent) showToast("Thư viện kết nối PeerJS chưa tải xong, thử lại sau 2 giây.", true);
+        return;
+      }
+      const code = forcedCode || getSavedRoomCode();
+      const hostBadge = document.getElementById("syncHostBadge");
+      if (_syncPeer) { try { _syncPeer.destroy(); } catch (e) {} _syncPeer = null; }
+      _syncConns = [];
+      _syncMode = "host";
+      updateSyncPill("waiting", `PC: ${code}`);
+      if (hostBadge) hostBadge.textContent = `Đang chờ ĐT (${code})...`;
+
+      const peer = new Peer(PEER_PREFIX + code, PEER_CFG);
+      _syncPeer = peer;
+
+      peer.on("open", () => {
+        if (hostBadge) hostBadge.textContent = `Sẵn sàng (${code})`;
+        if (!silent) showToast(`Máy tính sẵn sàng nhận bài! Mã phòng: ${code}`);
+      });
+
+      peer.on("connection", conn => {
+        _syncConns.push(conn);
+        conn.on("open", () => {
+          updateSyncPill("connected", `Đã nối ${_syncConns.length} ĐT`);
+          if (hostBadge) hostBadge.textContent = `Đã kết nối ${_syncConns.length} ĐT`;
+          showToast("Điện thoại đã kết nối real-time với Máy tính!");
+          // Push current exam keys to phone
+          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys });
+        });
+        conn.on("data", data => handleIncomingSyncMessage(data, conn));
+        conn.on("close", () => {
+          _syncConns = _syncConns.filter(c => c !== conn);
+          if (_syncConns.length === 0) {
+            updateSyncPill("waiting", `PC: ${code}`);
+            if (hostBadge) hostBadge.textContent = `Đang chờ ĐT (${code})...`;
+          } else {
+            updateSyncPill("connected", `Đã nối ${_syncConns.length} ĐT`);
+          }
+        });
+      });
+
+      peer.on("error", err => {
+        if (err?.type === "unavailable-id") {
+          const newCode = String(Math.floor(1000 + Math.random() * 9000));
+          try { localStorage.setItem("smartomr_room_code", newCode); } catch (e) {}
+          if (!silent) showToast(`Mã ${code} đang bận, đổi sang ${newCode}...`);
+          startDesktopHost(newCode, silent);
+        } else if (!silent) {
+          showToast("Lỗi kết nối phòng: " + (err?.message || err?.type || "mạng"), true);
+        }
+      });
+    }
+
+    function connectMobileToHost(forcedCode = null) {
+      if (typeof Peer === "undefined") {
+        setTimeout(() => connectMobileToHost(forcedCode), 600);
+        return;
+      }
+      const inp = document.getElementById("inpJoinRoomCode");
+      const code = (forcedCode || inp?.value || "").trim();
+      if (!/^\d{4}$/.test(code)) {
+        showToast("Vui lòng nhập đúng mã phòng 4 chữ số trên máy tính!", true);
+        return;
+      }
+      if (inp) inp.value = code;
+      const clientBadge = document.getElementById("syncClientBadge");
+      if (_syncPeer) { try { _syncPeer.destroy(); } catch (e) {} _syncPeer = null; }
+      _syncMode = "client";
+      updateSyncPill("waiting", `Đang nối ${code}...`);
+      if (clientBadge) clientBadge.textContent = `Đang kết nối ${code}...`;
+
+      const peer = new Peer(PEER_CFG);
+      _syncPeer = peer;
+
+      peer.on("open", () => {
+        const conn = peer.connect(PEER_PREFIX + code, { reliable: true });
+        _syncClientConn = conn;
+        conn.on("open", () => {
+          updateSyncPill("connected", `Đã nối PC (${code})`);
+          if (clientBadge) clientBadge.textContent = `Đã nối PC (${code})`;
+          closeSyncModal();
+          showToast(`Đã kết nối real-time tới Máy tính (${code})!`);
+          // Sync existing roster items to desktop
+          if (appState.roster.length > 0) {
+            conn.send({ type: "SYNC_ROSTER_BATCH", roster: appState.roster });
+          }
+        });
+        conn.on("data", data => handleIncomingSyncMessage(data, conn));
+        conn.on("close", () => {
+          updateSyncPill("off", "Mất kết nối PC");
+          if (clientBadge) clientBadge.textContent = "Mất kết nối";
+        });
+      });
+
+      peer.on("error", err => {
+        updateSyncPill("off", "Lỗi kết nối");
+        if (clientBadge) clientBadge.textContent = "Không tìm thấy PC";
+        showToast(`Không nối được tới phòng ${code}. Kiểm tra máy tính đã bật chưa!`, true);
+      });
+    }
+
+    function makeCompressedCanvasPreview() {
+      try {
+        const c = document.getElementById("omrCanvas");
+        if (!c || !c.width) return null;
+        const maxW = 720;
+        const scale = Math.min(1, maxW / c.width);
+        const tmp = document.createElement("canvas");
+        tmp.width = Math.round(c.width * scale);
+        tmp.height = Math.round(c.height * scale);
+        tmp.getContext("2d").drawImage(c, 0, 0, tmp.width, tmp.height);
+        return tmp.toDataURL("image/jpeg", 0.65);
+      } catch (e) { return null; }
+    }
+
+    function broadcastSyncEntry(entry) {
+      if (_syncMode !== "client" || !_syncClientConn || !_syncClientConn.open) return;
+      const scan = appState.currentScan;
+      const previewDataUrl = makeCompressedCanvasPreview();
+      _syncClientConn.send({
+        type: "SYNC_ENTRY",
+        entry,
+        scanSnapshot: {
+          studentName: scan.studentName,
+          studentClass: scan.studentClass,
+          manualCode: scan.manualCode,
+          detectedCode: scan.detectedCode,
+          p1Answers: scan.p1Answers,
+          p2Answers: scan.p2Answers,
+          p3Answers: scan.p3Answers,
+          essayScore: scan.essayScore
+        },
+        previewDataUrl
+      });
+    }
+
+    function broadcastSyncKeys() {
+      if (_syncMode === "host") {
+        _syncConns.forEach(c => { if (c.open) c.send({ type: "SYNC_KEYS", examKeys: appState.examKeys }); });
+      }
+    }
+
+    function handleIncomingSyncMessage(msg) {
+      if (!msg || !msg.type) return;
+      if (msg.type === "SYNC_KEYS" && msg.examKeys) {
+        appState.examKeys = { ...DEFAULT_EXAM_KEYS, ...msg.examKeys };
+        try { localStorage.setItem("smartomr_exam_keys_v19", JSON.stringify(appState.examKeys)); } catch (e) {}
+        renderExamKeysTab();
+        recalculateScoresFromState();
+        showToast("Đã đồng bộ bộ Mã Đề mới từ Máy tính!");
+      } else if (msg.type === "SYNC_ROSTER_BATCH" && Array.isArray(msg.roster)) {
+        let added = 0;
+        for (const item of msg.roster) {
+          const idx = appState.roster.findIndex(r => r.id === item.id);
+          if (idx >= 0) appState.roster[idx] = item;
+          else { appState.roster.push(item); added++; }
+        }
+        persistRoster();
+        renderRosterTable();
+        if (added > 0) showToast(`Đã nhận ${added} bài từ Điện thoại!`);
+      } else if (msg.type === "SYNC_ENTRY" && msg.entry) {
+        _isApplyingRemoteSync = true;
+        try {
+          const idx = appState.roster.findIndex(r => r.id === msg.entry.id);
+          if (idx >= 0) appState.roster[idx] = msg.entry;
+          else appState.roster.push(msg.entry);
+          persistRoster();
+          renderRosterTable();
+
+          if (msg.scanSnapshot) {
+            const s = msg.scanSnapshot;
+            appState.currentScan.scanId = msg.entry.id;
+            appState.currentScan.autoSaved = false;
+            appState.currentScan.studentName = msg.entry.name;
+            appState.currentScan.studentClass = msg.entry.className;
+            appState.currentScan.manualCode = s.manualCode || msg.entry.examCode;
+            appState.currentScan.detectedCode = s.detectedCode || msg.entry.examCode;
+            appState.currentScan.p1Answers = s.p1Answers || appState.currentScan.p1Answers;
+            appState.currentScan.p2Answers = s.p2Answers || appState.currentScan.p2Answers;
+            appState.currentScan.p3Answers = s.p3Answers || appState.currentScan.p3Answers;
+            appState.currentScan.essayScore = s.essayScore || 0;
+            const nInp = document.getElementById("inpStudentName"); if (nInp) nInp.value = msg.entry.name;
+            const cInp = document.getElementById("inpStudentClass"); if (cInp) cInp.value = msg.entry.className;
+            recalculateScoresFromState();
+          }
+
+          if (msg.previewDataUrl) {
+            const remoteImg = new Image();
+            remoteImg.onload = () => {
+              const canvas = document.getElementById("omrCanvas");
+              if (canvas) {
+                canvas.width = remoteImg.naturalWidth || remoteImg.width;
+                canvas.height = remoteImg.naturalHeight || remoteImg.height;
+                canvas.getContext("2d").drawImage(remoteImg, 0, 0);
+              }
+            };
+            remoteImg.src = msg.previewDataUrl;
+          }
+          playScanCompleteBeep(4);
+          showToast(`📱 Nhận bài "${msg.entry.name}": ${msg.entry.totalTN.toFixed(2)}/7.0đ (MĐ ${msg.entry.examCode})`);
+        } finally {
+          _isApplyingRemoteSync = false;
+        }
+      }
+    }
+
+    // =========================================================================
     // 11. INITIALIZATION ON LOAD
     // =========================================================================
     window.addEventListener("load", () => {
@@ -2988,6 +3309,14 @@
         loadSampleSheet("raw");
       } else if (rawImg) {
         rawImg.onload = () => loadSampleSheet("raw");
+      }
+
+      // Auto-connect Real-Time Sync: ?room=XXXX on mobile, or auto-host on desktop
+      const urlRoom = new URLSearchParams(location.search).get("room");
+      if (urlRoom && /^\d{4}$/.test(urlRoom)) {
+        connectMobileToHost(urlRoom);
+      } else if (window.innerWidth >= 1024) {
+        startDesktopHost(null, true);
       }
     });
   </script>

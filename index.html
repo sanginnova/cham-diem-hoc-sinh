@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.6 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v19.7 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.6</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.7</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -1990,7 +1990,47 @@
     // =========================================================================
     // 7. LIVE MOBILE CAMERA & IMAGE UPLOAD HANDLERS
     // =========================================================================
+    let _omrAudioCtx = null;
+    function unlockAudioCtx() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        if (!_omrAudioCtx) _omrAudioCtx = new AC();
+        if (_omrAudioCtx.state === "suspended") _omrAudioCtx.resume();
+        return _omrAudioCtx;
+      } catch (e) { return null; }
+    }
+
+    function playScanCompleteBeep(okCount = 4) {
+      try {
+        if (navigator.vibrate) navigator.vibrate(okCount === 4 ? [50, 40, 50] : 80);
+        const ctx = unlockAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const playTone = (freq, start, dur) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.001, start);
+          gain.gain.exponentialRampToValueAtTime(0.32, start + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + dur + 0.01);
+        };
+        if (okCount === 4) {
+          playTone(880, now, 0.09);
+          playTone(1318.5, now + 0.095, 0.14);
+        } else {
+          playTone(660, now, 0.14);
+        }
+      } catch (e) { /* Ignore audio errors on restricted browsers */ }
+    }
+
     async function toggleLiveCamera() {
+      unlockAudioCtx();
       const wrap = document.getElementById("liveCameraWrap");
       const btnText = document.getElementById("cameraBtnText");
 
@@ -2100,6 +2140,7 @@
     }
 
     function captureFromLiveCamera() {
+      unlockAudioCtx();
       const video = document.getElementById("cameraVideo");
       if (!video || !video.videoWidth) return;
       const tempCanvas = document.createElement("canvas");
@@ -2130,6 +2171,7 @@
         };
         stopLiveCamera();
         const okCount = autoDetectFiducialCorners(true);
+        playScanCompleteBeep(okCount);
         setFullScreenCalibrationUI(true);
         showToast(
           okCount === 4
@@ -2167,6 +2209,7 @@
             br: { x: REF_CORNERS.br.x * sx, y: REF_CORNERS.br.y * sy }
           };
           const okCount = autoDetectFiducialCorners(true);
+          playScanCompleteBeep(okCount);
           setFullScreenCalibrationUI(true);
           showToast(
             okCount === 4

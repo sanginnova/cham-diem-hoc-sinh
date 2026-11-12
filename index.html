@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v20.0 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v20.1 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,6 +31,15 @@
       width: 100%;
       height: auto;
       cursor: crosshair;
+    }
+    @media (max-width: 1023px) {
+      #omrCanvas {
+        max-height: 46dvh;
+        object-fit: contain;
+      }
+    }
+    button, label, input, select {
+      touch-action: manipulation;
     }
     .scan-laser {
       position: absolute;
@@ -75,29 +84,29 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.0</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v20.1</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
       </div>
 
       <!-- Navigation Tabs -->
-      <nav class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/70">
-        <button id="tabBtnScanner" onclick="switchTab('scanner')" class="tab-btn-active flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-          <span>Quét &amp; Chấm</span>
+      <nav class="grid grid-cols-4 sm:flex items-center gap-1 w-full sm:w-auto bg-slate-800/80 p-1 rounded-xl border border-slate-700/70">
+        <button id="tabBtnScanner" onclick="switchTab('scanner')" class="tab-btn-active flex items-center justify-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold transition-all truncate">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span class="truncate">Quét</span>
         </button>
-        <button id="tabBtnKeys" onclick="switchTab('keys')" class="text-slate-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-          <span>Mã Đề (<span id="keyCountBadge">4</span>)</span>
+        <button id="tabBtnKeys" onclick="switchTab('keys')" class="text-slate-300 hover:text-white flex items-center justify-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold transition-all truncate">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span class="truncate">Mã (<span id="keyCountBadge">4</span>)</span>
         </button>
-        <button id="tabBtnRoster" onclick="switchTab('roster')" class="text-slate-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-          <span>Bảng Điểm (<span id="rosterCountBadge">1</span>)</span>
+        <button id="tabBtnRoster" onclick="switchTab('roster')" class="text-slate-300 hover:text-white flex items-center justify-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold transition-all truncate">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span class="truncate">Điểm (<span id="rosterCountBadge">1</span>)</span>
         </button>
-        <button id="tabBtnSettings" onclick="switchTab('settings')" class="text-slate-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
-          <span class="hidden md:inline">Cấu Hình OMR</span>
+        <button id="tabBtnSettings" onclick="switchTab('settings')" class="text-slate-300 hover:text-white flex items-center justify-center gap-1 px-1.5 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-sm font-semibold transition-all truncate">
+          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+          <span class="truncate">Cài đặt</span>
         </button>
       </nav>
     </div>
@@ -110,7 +119,7 @@
   </div>
 
   <!-- MAIN CONTENT AREA -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 py-4">
+  <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-6 py-2.5 sm:py-4">
 
     <!-- ==================== TAB 1: SCANNER & GRADER ==================== -->
     <section id="viewScanner" class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -293,58 +302,58 @@
       <div class="lg:col-span-5 flex flex-col gap-4">
 
         <!-- Score Summary Hero Card -->
-        <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/60 border border-slate-800 rounded-2xl p-4 shadow-xl">
-          <div class="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <span class="text-[11px] font-bold uppercase tracking-wider text-blue-400">Kết Quả Chấm Phiếu OMR</span>
-              <h2 id="resStudentTitle" class="text-lg font-bold text-white mt-0.5">Đào Duy Khánh — 12B1</h2>
-              <p id="resExamMeta" class="text-xs text-slate-400">Kỳ thi: Giữa HKI (06/11/2026) • Trường CĐN1-BQP</p>
+        <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/60 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-xl">
+          <div class="flex items-start justify-between gap-2.5 mb-2.5 sm:mb-3">
+            <div class="min-w-0">
+              <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-blue-400">Kết Quả Chấm Phiếu OMR</span>
+              <h2 id="resStudentTitle" class="text-base sm:text-lg font-bold text-white mt-0.5 truncate">Đào Duy Khánh — 12B1</h2>
+              <p id="resExamMeta" class="text-[11px] sm:text-xs text-slate-400 truncate">Kỳ thi: Giữa HKI (06/11/2026) • Trường CĐN1-BQP</p>
             </div>
-            <div class="text-right bg-slate-950/80 border border-emerald-500/40 rounded-xl px-3.5 py-2">
-              <div class="text-[10px] uppercase font-semibold text-slate-400">Tổng Trắc Nghiệm</div>
-              <div class="text-2xl font-extrabold text-emerald-400 font-mono-code">
-                <span id="scoreTotalTN">5.60</span><span class="text-xs text-slate-400 font-normal"> / 7.00</span>
+            <div class="text-right bg-slate-950/80 border border-emerald-500/40 rounded-xl px-3 py-1.5 sm:px-3.5 sm:py-2 shrink-0">
+              <div class="text-[9px] sm:text-[10px] uppercase font-semibold text-slate-400">Tổng TN</div>
+              <div class="text-xl sm:text-2xl font-extrabold text-emerald-400 font-mono-code">
+                <span id="scoreTotalTN">5.60</span><span class="text-[11px] sm:text-xs text-slate-400 font-normal">/7</span>
               </div>
             </div>
           </div>
 
           <!-- 4 Component Score Pills -->
-          <div class="grid grid-cols-4 gap-2 mb-4">
-            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-400 font-medium">Mã Đề</div>
-              <div id="resExamCodeBadge" class="text-base font-bold text-amber-400 font-mono-code mt-0.5">104</div>
-              <div id="resExamKeyStatus" class="text-[10px] text-emerald-400">Khớp bộ đề</div>
+          <div class="grid grid-cols-4 gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-1.5 sm:p-2.5 text-center">
+              <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Mã Đề</div>
+              <div id="resExamCodeBadge" class="text-sm sm:text-base font-bold text-amber-400 font-mono-code mt-0.5">104</div>
+              <div id="resExamKeyStatus" class="text-[9px] sm:text-[10px] text-emerald-400 truncate">Khớp đề</div>
             </div>
-            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-400 font-medium">Phần I (12c)</div>
-              <div id="scorePart1" class="text-base font-bold text-white font-mono-code mt-0.5">2.50</div>
-              <div id="countPart1" class="text-[10px] text-slate-400">10/12 câu</div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-1.5 sm:p-2.5 text-center">
+              <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Phần I</div>
+              <div id="scorePart1" class="text-sm sm:text-base font-bold text-white font-mono-code mt-0.5">2.50</div>
+              <div id="countPart1" class="text-[9px] sm:text-[10px] text-slate-400 truncate">10/12</div>
             </div>
-            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-400 font-medium">Phần II (Đ/S)</div>
-              <div id="scorePart2" class="text-base font-bold text-white font-mono-code mt-0.5">1.10</div>
-              <div id="countPart2" class="text-[10px] text-slate-400">5/8 ý đúng</div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-1.5 sm:p-2.5 text-center">
+              <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Phần II</div>
+              <div id="scorePart2" class="text-sm sm:text-base font-bold text-white font-mono-code mt-0.5">1.10</div>
+              <div id="countPart2" class="text-[9px] sm:text-[10px] text-slate-400 truncate">5/8 ý</div>
             </div>
-            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 text-center">
-              <div class="text-[11px] text-slate-400 font-medium">Phần III (Số)</div>
-              <div id="scorePart3" class="text-base font-bold text-white font-mono-code mt-0.5">2.00</div>
-              <div id="countPart3" class="text-[10px] text-slate-400">4/4 câu</div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-1.5 sm:p-2.5 text-center">
+              <div class="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">Phần III</div>
+              <div id="scorePart3" class="text-sm sm:text-base font-bold text-white font-mono-code mt-0.5">2.00</div>
+              <div id="countPart3" class="text-[9px] sm:text-[10px] text-slate-400 truncate">4/4</div>
             </div>
           </div>
 
           <!-- Student Info Inputs & Save to Class Roster -->
-          <div class="grid grid-cols-12 gap-2 pt-2 border-t border-slate-800/80">
-            <div class="col-span-5">
+          <div class="grid grid-cols-6 sm:grid-cols-12 gap-2 pt-2 border-t border-slate-800/80">
+            <div class="col-span-4 sm:col-span-5">
               <label class="block text-[11px] text-slate-400 mb-1">Họ và tên thí sinh</label>
-              <input id="inpStudentName" type="text" value="Đào Duy Khánh" oninput="updateStudentHeader()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+              <input id="inpStudentName" type="text" value="Đào Duy Khánh" oninput="updateStudentHeader()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-sm sm:text-xs text-white focus:border-blue-500 focus:outline-none" />
             </div>
-            <div class="col-span-3">
+            <div class="col-span-2 sm:col-span-3">
               <label class="block text-[11px] text-slate-400 mb-1">Lớp</label>
-              <input id="inpStudentClass" type="text" value="12B1" oninput="updateStudentHeader()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none" />
+              <input id="inpStudentClass" type="text" value="12B1" oninput="updateStudentHeader()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-sm sm:text-xs text-white focus:border-blue-500 focus:outline-none" />
             </div>
-            <div class="col-span-2">
+            <div class="col-span-3 sm:col-span-2">
               <label class="block text-[11px] text-slate-400 mb-1">Mã đề</label>
-              <select id="selExamCodeOverride" onchange="onManualExamCodeChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-1.5 py-1.5 text-xs text-amber-300 font-mono-code focus:border-blue-500 focus:outline-none">
+              <select id="selExamCodeOverride" onchange="onManualExamCodeChange()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 sm:py-1.5 text-sm sm:text-xs text-amber-300 font-mono-code focus:border-blue-500 focus:outline-none">
                 <option value="AUTO">Tự động</option>
                 <option value="104">104</option>
                 <option value="101">101</option>
@@ -352,19 +361,19 @@
                 <option value="103">103</option>
               </select>
             </div>
-            <div class="col-span-2">
+            <div class="col-span-3 sm:col-span-2">
               <label class="block text-[11px] text-slate-400 mb-1">Tự luận</label>
-              <input id="inpEssayScore" type="number" step="0.25" min="0" max="3" value="0" oninput="recalculateScoresFromState()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white font-mono-code focus:border-blue-500 focus:outline-none" />
+              <input id="inpEssayScore" type="number" step="0.25" min="0" max="3" value="0" oninput="recalculateScoresFromState()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-sm sm:text-xs text-white font-mono-code focus:border-blue-500 focus:outline-none" />
             </div>
           </div>
 
-          <div class="mt-3 flex items-center justify-between gap-2">
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
             <div class="text-xs text-slate-300">
-              Tổng điểm toàn bài (TN + TL): <strong id="scoreGrandTotal" class="text-emerald-400 font-mono-code">5.60 / 10.0</strong>
+              Tổng toàn bài: <strong id="scoreGrandTotal" class="text-emerald-400 font-mono-code">5.60 / 10.0</strong>
             </div>
-            <button id="btnSaveToRoster" onclick="saveCurrentResultToRoster()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-900/40 transition">
+            <button id="btnSaveToRoster" onclick="saveCurrentResultToRoster()" class="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-900/40 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-              <span>Lưu Vào Bảng Điểm Lớp</span>
+              <span>Lưu Bảng Điểm</span>
             </button>
           </div>
         </div>

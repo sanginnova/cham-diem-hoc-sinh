@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v19.8 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v19.9 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -75,7 +75,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.8</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v19.9</span>
           </div>
           <p class="text-xs text-slate-400 hidden sm:block">Chấm phiếu trắc nghiệm 3 phần qua Camera điện thoại • Trường CĐ Nghề số 1</p>
         </div>
@@ -1566,12 +1566,20 @@
       if (!currentSourceImage) return 0;
       const w = currentSourceImage.naturalWidth || REF_WIDTH;
       const h = currentSourceImage.naturalHeight || REF_HEIGHT;
-      offscreenCanvas.width = w;
-      offscreenCanvas.height = h;
-      offscreenCtx.drawImage(currentSourceImage, 0, 0, w, h);
-      const data = offscreenCtx.getImageData(0, 0, w, h).data;
-      const res = detectFiducialCornersFromRGBA(data, w, h);
-      appState.corners = res.corners;
+      const detW = Math.min(w, 600);
+      const detH = Math.max(100, Math.round((detW * h) / w));
+      offscreenCanvas.width = detW;
+      offscreenCanvas.height = detH;
+      offscreenCtx.drawImage(currentSourceImage, 0, 0, detW, detH);
+      const data = offscreenCtx.getImageData(0, 0, detW, detH).data;
+      const res = detectFiducialCornersFromRGBA(data, detW, detH);
+      const sx = w / detW, sy = h / detH;
+      appState.corners = {
+        tl: { x: res.corners.tl.x * sx, y: res.corners.tl.y * sy },
+        tr: { x: res.corners.tr.x * sx, y: res.corners.tr.y * sy },
+        bl: { x: res.corners.bl.x * sx, y: res.corners.bl.y * sy },
+        br: { x: res.corners.br.x * sx, y: res.corners.br.y * sy }
+      };
       runOMRGrading();
       if (!silent) {
         showToast(
@@ -2208,7 +2216,13 @@
             }
             if (isLocked && appState.autoCaptureEnabled !== false) {
               appState.autoCaptureLocked = true;
-              captureFromLiveCamera();
+              const liveCornersNorm = {
+                tl: { x: tl.x / rw, y: tl.y / rh },
+                tr: { x: tr.x / rw, y: tr.y / rh },
+                bl: { x: bl.x / rw, y: bl.y / rh },
+                br: { x: br.x / rw, y: br.y / rh }
+              };
+              captureFromLiveCamera(liveCornersNorm);
               return;
             }
           } else {
@@ -2285,7 +2299,7 @@
       }
     }
 
-    function captureFromLiveCamera() {
+    function captureFromLiveCamera(liveCornersNorm = null) {
       unlockAudioCtx();
       const video = document.getElementById("cameraVideo");
       if (!video || !video.videoWidth) return;
@@ -2316,7 +2330,26 @@
           br: { x: REF_CORNERS.br.x * sx, y: REF_CORNERS.br.y * sy }
         };
         stopLiveCamera();
-        const okCount = autoDetectFiducialCorners(true);
+        let okCount = autoDetectFiducialCorners(true);
+        if (liveCornersNorm && liveCornersNorm.tl) {
+          const liveScaled = {
+            tl: { x: liveCornersNorm.tl.x * w, y: liveCornersNorm.tl.y * h },
+            tr: { x: liveCornersNorm.tr.x * w, y: liveCornersNorm.tr.y * h },
+            bl: { x: liveCornersNorm.bl.x * w, y: liveCornersNorm.bl.y * h },
+            br: { x: liveCornersNorm.br.x * w, y: liveCornersNorm.br.y * h }
+          };
+          const drift = Math.max(
+            Math.hypot(appState.corners.tl.x - liveScaled.tl.x, appState.corners.tl.y - liveScaled.tl.y),
+            Math.hypot(appState.corners.tr.x - liveScaled.tr.x, appState.corners.tr.y - liveScaled.tr.y),
+            Math.hypot(appState.corners.bl.x - liveScaled.bl.x, appState.corners.bl.y - liveScaled.bl.y),
+            Math.hypot(appState.corners.br.x - liveScaled.br.x, appState.corners.br.y - liveScaled.br.y)
+          );
+          if (okCount < 4 || drift > 0.04 * w) {
+            appState.corners = liveScaled;
+            runOMRGrading();
+            okCount = 4;
+          }
+        }
         playScanCompleteBeep(okCount);
         setFullScreenCalibrationUI(true);
         showToast(

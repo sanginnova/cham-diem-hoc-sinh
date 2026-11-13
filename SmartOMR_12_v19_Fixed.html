@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v21.2 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v21.3 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.2</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.3</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -676,9 +676,15 @@
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3.5">
           <h2 class="text-base font-bold text-white">Tự Động Đọc Tên Học Sinh (AI Vision / OCR + Danh Sách Lớp)</h2>
           <p class="text-xs text-slate-400">Hệ thống tự động cắt vùng Họ tên phía trên Vùng Chấm để đọc bằng Gemini Vision (nếu nhập Key), hoặc OCR offline trên trình duyệt + đối chiếu gần đúng với Danh sách lớp.</p>
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key (tùy chọn — đọc chữ viết tay tiếng Việt chuẩn ~99%)</label>
-            <input id="inpGeminiApiKey" type="password" placeholder="AIzaSy... (để trống nếu dùng OCR offline miễn phí)" oninput="saveNameRecognitionSettings()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono-code focus:border-emerald-500 focus:outline-none" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Gemini API Key (đọc chữ viết tay tiếng Việt chuẩn ~99%)</label>
+              <input id="inpGeminiApiKey" type="password" placeholder="AIzaSy... (để trống nếu dùng OCR offline miễn phí)" oninput="saveNameRecognitionSettings()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono-code focus:border-emerald-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1">Model Gemini AI Vision</label>
+              <input id="inpGeminiModel" type="text" value="gemini-3.8-flash" placeholder="gemini-3.8-flash" oninput="saveNameRecognitionSettings()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-amber-300 font-mono-code focus:border-emerald-500 focus:outline-none" />
+            </div>
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-300 mb-1">Danh sách học sinh trong lớp (mỗi dòng 1 họ tên — dùng để chuẩn hóa dấu &amp; gợi ý nhanh)</label>
@@ -3392,10 +3398,11 @@
           updateSyncPill("connected", `Đã nối ${_syncConns.length} ĐT`);
           if (hostBadge) hostBadge.textContent = `Đã kết nối ${_syncConns.length} ĐT`;
           showToast("Điện thoại đã kết nối real-time với Máy tính!");
-          // Push current exam keys, class roster, AND Gemini API Key to phone
+          // Push current exam keys, class roster, Gemini API Key & Model to phone
           const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
           const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
-          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText, geminiApiKey });
+          const geminiModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || "gemini-3.8-flash").trim();
+          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText, geminiApiKey, geminiModel });
         });
         conn.on("data", data => handleIncomingSyncMessage(data, conn));
         conn.on("close", () => {
@@ -3512,15 +3519,65 @@
       if (_syncMode === "host") {
         const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
         const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+        const geminiModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || "gemini-3.8-flash").trim();
         _syncConns.forEach(c => {
           if (c.open) c.send({
             type: "SYNC_KEYS",
             examKeys: appState.examKeys,
             classListText,
-            geminiApiKey
+            geminiApiKey,
+            geminiModel
           });
         });
       }
+    }
+
+    const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
+
+    async function callGeminiVisionContent(geminiKey, b64Data, promptText) {
+      const preferredModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || DEFAULT_GEMINI_MODEL).trim();
+      const candidateModels = [
+        preferredModel,
+        "gemini-3.8-flash",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+      ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
+      let lastError = null;
+      for (const model of candidateModels) {
+        try {
+          const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(geminiKey)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { inline_data: { mime_type: "image/jpeg", data: b64Data } },
+                    { text: promptText }
+                  ]
+                }],
+                generationConfig: { responseMimeType: "application/json", temperature: 0 }
+              })
+            }
+          );
+          if (resp.ok) {
+            const j = await resp.json();
+            const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+            return { parsed: JSON.parse(txt), modelUsed: model };
+          } else {
+            const errBody = await resp.text().catch(() => "");
+            lastError = new Error(`Model ${model} status ${resp.status}: ${errBody}`);
+            console.warn(`Thử model ${model} không thành công, thử model tiếp theo:`, lastError);
+          }
+        } catch (err) {
+          lastError = err;
+          console.warn(`Lỗi gọi model ${model}:`, err);
+        }
+      }
+      throw lastError || new Error("Không thể kết nối Gemini API");
     }
 
     async function processDesktopGeminiVision(entryId, cropUrl, conn) {
@@ -3530,25 +3587,8 @@
         const b64 = cropUrl.split(",")[1];
         if (!b64) return;
         const rosterHint = getClassRosterNames().slice(0, 80).join(", ");
-        const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{
-                parts: [
-                  { inline_data: { mime_type: "image/jpeg", data: b64 } },
-                  { text: `Đọc chính xác Họ và tên học sinh (chữ viết tay) và Lớp trong ảnh phiếu thi này. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON: {"name": "...", "className": "..."}` }
-                ]
-              }],
-              generationConfig: { responseMimeType: "application/json", temperature: 0 }
-            })
-          }
-        );
-        const j = await resp.json();
-        const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-        const parsed = JSON.parse(txt);
+        const promptText = `Trong ảnh là phần thông tin đầu bài thi. Hãy đọc chính xác 'Họ và tên thí sinh' (chữ viết tay) và 'Lớp'. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON hợp lệ: {"name": "...", "className": "..."}`;
+        const { parsed, modelUsed } = await callGeminiVisionContent(geminiKey, b64, promptText);
         const rawName = (parsed.name || "").trim();
         const rawClass = (parsed.className || "").trim();
         const matched = fuzzyMatchStudentName(rawName);
@@ -3571,7 +3611,7 @@
           updateStudentHeader();
           renderOMRCanvas();
         }
-        showToast(`✨ Gemini Vision trên PC đã nhận diện tên: "${finalName}"!`);
+        showToast(`✨ Gemini (${modelUsed}) trên PC đã nhận diện tên: "${finalName}"!`);
 
         // 2. Send back to Phone so Phone UI updates student name in real-time
         if (conn && conn.open) {
@@ -3579,7 +3619,8 @@
             type: "SYNC_NAME_UPDATE",
             entryId,
             studentName: finalName,
-            studentClass: rawClass
+            studentClass: rawClass,
+            modelUsed
           });
         }
       } catch (err) {
@@ -3603,7 +3644,15 @@
           try { localStorage.setItem("smartomr_gemini_key", msg.geminiApiKey); } catch (e) {}
           const kInp = document.getElementById("inpGeminiApiKey");
           if (kInp) kInp.value = msg.geminiApiKey;
-          showToast("🔑 Đã nhận Gemini Vision API Key từ Máy tính! Tự động đọc tên HS.");
+        }
+        if (msg.geminiModel) {
+          appState.geminiModel = msg.geminiModel;
+          try { localStorage.setItem("smartomr_gemini_model", msg.geminiModel); } catch (e) {}
+          const mInp = document.getElementById("inpGeminiModel");
+          if (mInp) mInp.value = msg.geminiModel;
+        }
+        if (msg.geminiApiKey) {
+          showToast(`🔑 Đã nhận Gemini Vision (${msg.geminiModel || "gemini-3.8-flash"}) từ Máy tính!`);
         }
         renderExamKeysTab();
         recalculateScoresFromState();
@@ -3691,12 +3740,14 @@
       } else if (msg.type === "REQ_CONFIG") {
         const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
         const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
+        const geminiModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || "gemini-3.8-flash").trim();
         if (conn && conn.open) {
           conn.send({
             type: "SYNC_KEYS",
             examKeys: appState.examKeys,
             classListText,
-            geminiApiKey
+            geminiApiKey,
+            geminiModel
           });
         }
       } else if (msg.type === "REQ_VISION_NAME" && msg.cropUrl) {
@@ -3764,6 +3815,10 @@
         const kInp = document.getElementById("inpGeminiApiKey");
         if (kInp) kInp.value = k;
 
+        const m = localStorage.getItem("smartomr_gemini_model") || "gemini-3.8-flash";
+        const mInp = document.getElementById("inpGeminiModel");
+        if (mInp) mInp.value = m;
+
         const savedList = localStorage.getItem("smartomr_class_list_v19");
         const txt = document.getElementById("txtClassRosterList");
         if (txt) txt.value = savedList !== null ? savedList : DEFAULT_CLASS_ROSTER_TEXT;
@@ -3775,6 +3830,8 @@
       try {
         const k = document.getElementById("inpGeminiApiKey")?.value?.trim() || "";
         localStorage.setItem("smartomr_gemini_key", k);
+        const m = (document.getElementById("inpGeminiModel")?.value || "gemini-3.8-flash").trim();
+        localStorage.setItem("smartomr_gemini_model", m);
         const listText = document.getElementById("txtClassRosterList")?.value ?? "";
         localStorage.setItem("smartomr_class_list_v19", listText);
       } catch (e) {}
@@ -3906,30 +3963,14 @@
 
       // 1. Direct Gemini Vision if key exists on phone
       if (geminiKey) {
-        if (statusEl) statusEl.textContent = "⏳ Gemini Vision đang tự động đọc Họ tên...";
+        const curModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || DEFAULT_GEMINI_MODEL).trim();
+        if (statusEl) statusEl.textContent = `⏳ Gemini Vision (${curModel}) đang tự động đọc Họ tên...`;
         try {
           const b64 = cropUrl.split(",")[1];
           const rosterHint = getClassRosterNames().slice(0, 80).join(", ");
-          const resp = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(geminiKey)}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [
-                    { inline_data: { mime_type: "image/jpeg", data: b64 } },
-                    { text: `Trong ảnh là phần thông tin đầu bài thi. Hãy đọc chính xác 'Họ và tên thí sinh' (chữ viết tay) và 'Lớp'. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON hợp lệ: {"name": "...", "className": "..."}` }
-                  ]
-                }],
-                generationConfig: { responseMimeType: "application/json", temperature: 0 }
-              })
-            }
-          );
-          const j = await resp.json();
-          const txt = j?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-          const parsed = JSON.parse(txt);
-          applyDetectedName(parsed.name || "", parsed.className || "", "Gemini AI");
+          const promptText = `Trong ảnh là phần thông tin đầu bài thi. Hãy đọc chính xác 'Họ và tên thí sinh' (chữ viết tay) và 'Lớp'. Danh sách lớp tham khảo: [${rosterHint}]. Trả về duy nhất JSON hợp lệ: {"name": "...", "className": "..."}`;
+          const { parsed, modelUsed } = await callGeminiVisionContent(geminiKey, b64, promptText);
+          applyDetectedName(parsed.name || "", parsed.className || "", `Gemini AI (${modelUsed})`);
           return;
         } catch (e) {
           if (manualRetry) showToast("Lỗi gọi Gemini API Key, thử nhờ Máy tính...", true);

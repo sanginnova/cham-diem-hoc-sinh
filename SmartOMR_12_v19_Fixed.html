@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v21.5 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v21.6 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.5</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.6</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -1807,30 +1807,37 @@
         return bSc >= 20 ? { x: bX, y: bY, ok: true, sc: bSc } : { x: Math.round(px), y: Math.round(py), ok: false, sc: 0 };
       };
 
-      function searchFiducialInBox(b) {
+      function searchFiducialInBox(b, cornerType) {
         if (!b) return null;
         const x0 = Math.max(gROut + 1, Math.round(b.x));
         const x1 = Math.min(w - gROut - 1, Math.round(b.x + b.w));
         const y0 = Math.max(gROut + 1, Math.round(b.y));
         const y1 = Math.min(h - gROut - 1, Math.round(b.y + b.h));
         if (x1 <= x0 || y1 <= y0) return null;
-        const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
         let bSc = -1e9, bX = -1, bY = -1, bContrast = 0;
         for (let y = y0; y <= y1; y += step) {
           for (let x = x0; x <= x1; x += step) {
             const inner = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
-            if (inner > 155) continue;
+            if (inner > 160) continue;
             const outerAll = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
             const ringMean = (outerAll * gOutArea - inner * gInArea) / (gOutArea - gInArea);
             const contrast = ringMean - inner;
-            if (contrast < 22) continue;
-            const sc = contrast - Math.hypot(x - cx, y - cy) * 0.05;
+            if (contrast < 18) continue;
+
+            // Directional priority: strongly prefers the outermost corner square of the OMR grid
+            let dirBonus = 0;
+            if (cornerType === 'tl') dirBonus = -(x - x0) * 0.05 - (y - y0) * 0.05;
+            else if (cornerType === 'tr') dirBonus = (x - x0) * 0.05 - (y - y0) * 0.05;
+            else if (cornerType === 'bl') dirBonus = -(x - x0) * 0.05 + (y - y0) * 0.05;
+            else if (cornerType === 'br') dirBonus = (x - x0) * 0.05 + (y - y0) * 0.05;
+
+            const sc = contrast + dirBonus;
             if (sc > bSc) {
               bSc = sc; bX = x; bY = y; bContrast = contrast;
             }
           }
         }
-        if (bSc > 0 && bContrast >= 22) {
+        if (bSc > 0 && bContrast >= 18) {
           let fineBest = -1e9, fx = bX, fy = bY;
           for (let y = Math.max(gROut + 1, bY - step); y <= Math.min(h - gROut - 1, bY + step); y++) {
             for (let x = Math.max(gROut + 1, bX - step); x <= Math.min(w - gROut - 1, bX + step); x++) {
@@ -1851,10 +1858,10 @@
       // Method 1: Target Guide Boxes Mode (Live Camera Loop)
       // When user holds the phone, the 4 fiducials are positioned directly inside the 4 onscreen boxes
       if (hintBoxes && hintBoxes.tl && hintBoxes.tr && hintBoxes.bl && hintBoxes.br) {
-        let hTL = searchFiducialInBox(hintBoxes.tl);
-        let hTR = searchFiducialInBox(hintBoxes.tr);
-        let hBL = searchFiducialInBox(hintBoxes.bl);
-        let hBR = searchFiducialInBox(hintBoxes.br);
+        let hTL = searchFiducialInBox(hintBoxes.tl, 'tl');
+        let hTR = searchFiducialInBox(hintBoxes.tr, 'tr');
+        let hBL = searchFiducialInBox(hintBoxes.bl, 'bl');
+        let hBR = searchFiducialInBox(hintBoxes.br, 'br');
 
         const foundList = [
           { k: 'tl', pt: hTL },
@@ -2467,9 +2474,9 @@
           const guideW = gx1 - gx0;
           const guideH = gy1 - gy0;
 
-          // Target corner boxes with comfortable capture tolerance
-          const boxW = Math.round(guideW * 0.24);
-          const boxH = Math.round(guideH * 0.16);
+          // Target corner boxes with extra-large, ultra-flexible capture tolerance (~2.6x larger area)
+          const boxW = Math.round(guideW * 0.40);
+          const boxH = Math.round(guideH * 0.28);
           const boxes = {
             tl: { x: gx0 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "1" },
             tr: { x: gx1 - boxW * 0.5, y: gy0 - boxH * 0.5, w: boxW, h: boxH, label: "2" },
@@ -2493,11 +2500,12 @@
           const hl = Math.hypot(bl.x - tl.x, bl.y - tl.y);
           const hr = Math.hypot(br.x - tr.x, br.y - tr.y);
           const ar = Math.min(wt, wb) > 0.20 * rw ? (hl + hr) / (wt + wb) : 0;
-          const validGeo = res.okCount === 4 && ar >= 1.15 && ar <= 1.80;
+          const validGeo = res.okCount === 4 && ar >= 1.10 && ar <= 1.85;
 
           const pTL = mapPt(tl), pTR = mapPt(tr), pBL = mapPt(bl), pBR = mapPt(br);
 
-          const inBox = (pt, b) => pt.x >= b.x && pt.x <= b.x + b.w && pt.y >= b.y && pt.y <= b.y + b.h;
+          // Generous hit tolerance window (+8px boundary padding)
+          const inBox = (pt, b) => pt.x >= b.x - 8 && pt.x <= b.x + b.w + 8 && pt.y >= b.y - 8 && pt.y <= b.y + b.h + 8;
           const hitTL = validGeo && inBox(pTL, boxes.tl);
           const hitTR = validGeo && inBox(pTR, boxes.tr);
           const hitBL = validGeo && inBox(pBL, boxes.bl);
@@ -2547,15 +2555,33 @@
           octx.strokeRect(gx0, gy0, guideW, guideH);
           octx.setLineDash([]);
 
-          // 4. Draw 4 Corner Alignment Target Boxes
+          // 4. Draw 4 Expanded Alignment Target Boxes (Linh hoạt & bắt góc siêu nhạy)
           for (const k of ["tl", "tr", "bl", "br"]) {
             const b = boxes[k];
             const ok = hitsMap[k];
-            octx.fillStyle = ok ? "rgba(16,185,129,0.22)" : "rgba(239,68,68,0.08)";
-            octx.fillRect(b.x, b.y, b.w, b.h);
-            octx.strokeStyle = ok ? "#10b981" : "#ef4444";
-            octx.lineWidth = ok ? 3.5 : 2.5;
-            octx.strokeRect(b.x, b.y, b.w, b.h);
+            octx.fillStyle = ok ? "rgba(16, 185, 129, 0.24)" : "rgba(239, 68, 68, 0.09)";
+            if (octx.roundRect) {
+              octx.beginPath();
+              octx.roundRect(b.x, b.y, b.w, b.h, 10);
+              octx.fill();
+              octx.strokeStyle = ok ? "#10b981" : "#ef4444";
+              octx.lineWidth = ok ? 3.5 : 2.5;
+              octx.stroke();
+            } else {
+              octx.fillRect(b.x, b.y, b.w, b.h);
+              octx.strokeStyle = ok ? "#10b981" : "#ef4444";
+              octx.lineWidth = ok ? 3.5 : 2.5;
+              octx.strokeRect(b.x, b.y, b.w, b.h);
+            }
+            // Tâm ngắm crosshair ở giữa mỗi ô đỏ
+            octx.strokeStyle = ok ? "rgba(16, 185, 129, 0.6)" : "rgba(239, 68, 68, 0.4)";
+            octx.lineWidth = 1.2;
+            const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+            const arm = Math.min(12, b.w * 0.15);
+            octx.beginPath();
+            octx.moveTo(cx - arm, cy); octx.lineTo(cx + arm, cy);
+            octx.moveTo(cx, cy - arm); octx.lineTo(cx, cy + arm);
+            octx.stroke();
           }
 
           if (validGeo) {

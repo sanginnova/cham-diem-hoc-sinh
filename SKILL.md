@@ -27,31 +27,65 @@ Hệ thống cung cấp giải pháp khép kín 100% từ khâu thu thập ảnh
 
 ---
 
-## 2. BẢNG ĐÁP ÁN CHUẨN XÁC 100% CỦA 4 BỘ ĐỀ IN THỰC TẾ
+## 2. BẢNG ĐÁP ÁN CHUẨN XÁC 100% TOÀN BỘ 8 MÃ ĐỀ GHK1 TOÁN 12 (2025-2026)
+> Nguồn đối soát: `DapAn__DE_1-GHK1-TOAN_12.docx_02_11_2025.xlsx`, `DapAn__DE_2-GHK1-TOAN_12.docx_02_11_2025.xlsx` & `ĐÁP ÁN ĐỀ GIỮA KÌ 1 TOÁN 12 (2025-2026).docx`.
 
-### Mã đề 101:
-- **Phần I**: 1.D, 2.B, 3.D, 4.D, 5.D, 6.B, 7.C, 8.A, 9.B, 10.D, 11.B, 12.A
-- **Phần II**: C13: a.S, b.Đ, c.Đ, d.S | C14: a.Đ, b.Đ, c.S, d.S
-- **Phần III**: C15: 1 | C16: 18 | C17: 2 | C18: 7
-- **Phần IV**: C19 (m=3, b=1, c=-3); C20 (v_max=25 m/s khi t=4s); C21 (x ≈ 24.3m)
+### 🔹 BỘ ĐỀ 1 (MÃ ĐỀ 101, 102, 103, 104)
 
-### Mã đề 102:
-- **Phần I**: 1.B, 2.B, 3.C, 4.D, 5.C, 6.B, 7.C, 8.B, 9.B, 10.C, 11.D, 12.D
-- **Phần II**: C13: a.Đ, b.S, c.Đ, d.Đ | C14: a.Đ, b.S, c.Đ, d.S
-- **Phần III**: C15: 7 | C16: 18 | C17: 1 | C18: 2
-- **Phần IV**: C19, C20, C21 tương tự mã 101.
+#### Mã đề 101 (0101):
+- **Phần I (12 câu ABCD)**: 1.A, 2.C, 3.D, 4.C, 5.D, 6.B, 7.D, 8.A, 9.B, 10.D, 11.B, 12.C
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.Đ, c.S, d.S | C14: a.S, b.Đ, c.Đ, d.S
+- **Phần III (Điền số)**: C15: 2 | C16: 1 | C17: 7 | C18: 18
+- **Phần IV (Tự luận)**:
+  * **C19 (1.00đ)**: Tìm $m, b, c$ biết $(C)$ qua $A(2; 5), B(-1; -1)$ và TCX có hệ số góc bằng 3. Kết quả: $m = 3, b = 1, c = -3$.
+  * **C20 (1.00đ)**: $s(t) = -t^3 + 12t^2 \implies v(t) = -3t^2 + 24t$. Vận tốc lớn nhất $v_{\max} = 25\text{ m/s}$ khi $t = 4\text{s}$.
+  * **C21 (1.00đ)**: Tối ưu lộ trình bơi và chạy qua hồ $60\text{ m} \times 250\text{ m}$. Kết quả: $x = FE \approx 24.3\text{ m}$.
 
-### Mã đề 103:
-- **Phần I**: 1.B, 2.A, 3.B, 4.D, 5.C, 6.A, 7.A, 8.D, 9.B, 10.C, 11.A, 12.C
-- **Phần II**: C13: a.Đ, b.Đ, c.S, d.S | C14: a.S, b.Đ, c.Đ, d.S
-- **Phần III**: C15: 18 | C16: 2 | C17: 1 | C18: 7
-- **Phần IV**: C19, C20, C21 tương tự mã 101.
+#### Mã đề 102 (0102):
+- **Phần I (12 câu ABCD)**: 1.A, 2.D, 3.A, 4.D, 5.D, 6.D, 7.D, 8.D, 9.C, 10.B, 11.A, 12.C
+- **Phần II (Đúng/Sai)**: C13: a.S, b.Đ, c.Đ, d.S | C14: a.Đ, b.Đ, c.S, d.S
+- **Phần III (Điền số)**: C15: 7 | C16: 18 | C17: 1 | C18: 2
+- **Phần IV (Tự luận)**: C19 ($m=3, b=1, c=-3$); C20 ($v_{\max}=25\text{ m/s}$ tại $t=4\text{s}$); C21 ($x \approx 24.3\text{ m}$).
 
-### Mã đề 104:
-- **Phần I**: 1.D, 2.A, 3.B, 4.A, 5.D, 6.C, 7.A, 8.D, 9.C, 10.C, 11.D, 12.D
-- **Phần II**: C13: a.Đ, b.Đ, c.S, d.S | C14: a.S, b.Đ, c.Đ, d.S
-- **Phần III**: C15: 2 | C16: 1 | C17: 7 | C18: 18
-- **Phần IV**: C19, C20, C21 tương tự mã 101.
+#### Mã đề 103 (0103):
+- **Phần I (12 câu ABCD)**: 1.B, 2.A, 3.B, 4.D, 5.C, 6.A, 7.A, 8.D, 9.B, 10.C, 11.A, 12.C
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.Đ, c.S, d.S | C14: a.S, b.Đ, c.Đ, d.S
+- **Phần III (Điền số)**: C15: 18 | C16: 2 | C17: 1 | C18: 7
+- **Phần IV (Tự luận)**: Tương tự mã 101.
+
+#### Mã đề 104 (0104):
+- **Phần I (12 câu ABCD)**: 1.D, 2.A, 3.B, 4.A, 5.D, 6.C, 7.A, 8.D, 9.C, 10.C, 11.D, 12.D
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.Đ, c.S, d.S | C14: a.S, b.Đ, c.Đ, d.S
+- **Phần III (Điền số)**: C15: 2 | C16: 1 | C17: 7 | C18: 18
+- **Phần IV (Tự luận)**: Tương tự mã 101.
+
+---
+
+### 🔹 BỘ ĐỀ 2 (MÃ ĐỀ 201, 202, 203, 204)
+
+#### Mã đề 201 (0201):
+- **Phần I (12 câu ABCD)**: 1.D, 2.B, 3.C, 4.A, 5.C, 6.D, 7.B, 8.C, 9.B, 10.A, 11.B, 12.D
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.S, c.S, d.Đ | C14: a.Đ, b.S, c.Đ, d.Đ
+- **Phần III (Điền số)**: C15: 7 | C16: 20 | C17: 1 | C18: 1
+- **Phần IV (Tự luận)**: Tương tự barem tự luận chuẩn (C19: $m=3, b=1, c=-3$; C20: $v_{\max}=25\text{ m/s}$ tại $t=4\text{s}$; C21: $x \approx 24.3\text{ m}$).
+
+#### Mã đề 202 (0202):
+- **Phần I (12 câu ABCD)**: 1.D, 2.C, 3.A, 4.B, 5.B, 6.D, 7.A, 8.A, 9.A, 10.B, 11.A, 12.D
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.S, c.Đ, d.Đ | C14: a.Đ, b.S, c.S, d.Đ
+- **Phần III (Điền số)**: C15: 1 | C16: 20 | C17: 1 | C18: 7
+- **Phần IV (Tự luận)**: Tương tự mã 201.
+
+#### Mã đề 203 (0203):
+- **Phần I (12 câu ABCD)**: 1.A, 2.B, 3.D, 4.A, 5.B, 6.A, 7.C, 8.B, 9.A, 10.D, 11.C, 12.C
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.S, c.Đ, d.Đ | C14: a.S, b.Đ, c.S, d.Đ
+- **Phần III (Điền số)**: C15: 1 | C16: 1 | C17: 20 | C18: 7
+- **Phần IV (Tự luận)**: Tương tự mã 201.
+
+#### Mã đề 204 (0204):
+- **Phần I (12 câu ABCD)**: 1.B, 2.D, 3.A, 4.B, 5.D, 6.B, 7.C, 8.A, 9.C, 10.D, 11.A, 12.A
+- **Phần II (Đúng/Sai)**: C13: a.Đ, b.S, c.Đ, d.Đ | C14: a.Đ, b.S, c.Đ, d.S
+- **Phần III (Điền số)**: C15: 1 | C16: 1 | C17: 7 | C18: 20
+- **Phần IV (Tự luận)**: Tương tự mã 201.
 
 ---
 

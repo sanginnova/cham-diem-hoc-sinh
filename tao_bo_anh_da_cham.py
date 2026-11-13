@@ -84,18 +84,18 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 IMG_DIR = os.path.join(CURRENT_DIR, "anh_bai_lam")
 
-# Đáp án chuẩn 4 mã đề (Đã kiểm toán và đồng bộ 100% với bản in đề thi gốc)
+# Đáp án chuẩn 8 mã đề (Đã kiểm toán và đồng bộ 100% với bản in đề thi gốc và file Excel đáp án chính thức GHK1 2025-2026)
 MASTER_KEYS = {
     "101": {
-        "p1": ["D", "B", "D", "D", "D", "B", "C", "A", "B", "D", "B", "A"],
-        "p2_13": ["S", "Đ", "Đ", "S"],
-        "p2_14": ["Đ", "Đ", "S", "S"],
+        "p1": ["A", "C", "D", "C", "D", "B", "D", "A", "B", "D", "B", "C"],
+        "p2_13": ["Đ", "Đ", "S", "S"],
+        "p2_14": ["S", "Đ", "Đ", "S"],
         "p3": ["2", "1", "7", "18"]
     },
     "102": {
-        "p1": ["B", "B", "C", "D", "C", "B", "C", "B", "B", "C", "D", "D"],
-        "p2_13": ["Đ", "S", "Đ", "Đ"],
-        "p2_14": ["Đ", "S", "Đ", "S"],
+        "p1": ["A", "D", "A", "D", "D", "D", "D", "D", "C", "B", "A", "C"],
+        "p2_13": ["S", "Đ", "Đ", "S"],
+        "p2_14": ["Đ", "Đ", "S", "S"],
         "p3": ["7", "18", "1", "2"]
     },
     "103": {
@@ -109,8 +109,35 @@ MASTER_KEYS = {
         "p2_13": ["Đ", "Đ", "S", "S"],
         "p2_14": ["S", "Đ", "Đ", "S"],
         "p3": ["2", "1", "7", "18"]
+    },
+    "201": {
+        "p1": ["D", "B", "C", "A", "C", "D", "B", "C", "B", "A", "B", "D"],
+        "p2_13": ["Đ", "S", "S", "Đ"],
+        "p2_14": ["Đ", "S", "Đ", "Đ"],
+        "p3": ["7", "20", "1", "1"]
+    },
+    "202": {
+        "p1": ["D", "C", "A", "B", "B", "D", "A", "A", "A", "B", "A", "D"],
+        "p2_13": ["Đ", "S", "Đ", "Đ"],
+        "p2_14": ["Đ", "S", "S", "Đ"],
+        "p3": ["1", "20", "1", "7"]
+    },
+    "203": {
+        "p1": ["A", "B", "D", "A", "B", "A", "C", "B", "A", "D", "C", "C"],
+        "p2_13": ["Đ", "S", "Đ", "Đ"],
+        "p2_14": ["S", "Đ", "S", "Đ"],
+        "p3": ["1", "1", "20", "7"]
+    },
+    "204": {
+        "p1": ["B", "D", "A", "B", "D", "B", "C", "A", "C", "D", "A", "A"],
+        "p2_13": ["Đ", "S", "Đ", "Đ"],
+        "p2_14": ["Đ", "S", "Đ", "S"],
+        "p3": ["1", "1", "7", "20"]
     }
 }
+# Alias mapping 4-digit codes to 3-digit keys
+for _k in list(MASTER_KEYS.keys()):
+    MASTER_KEYS[f"0{_k}"] = MASTER_KEYS[_k]
 
 OPTIONS_P1 = {"A": 0, "B": 1, "C": 2, "D": 3}
 
@@ -344,17 +371,50 @@ def annotate_omr_sheet(img_path, student, out_path):
     H1 = m_bl[1] - m_tl[1]
     H2 = m_bm[1] - m_tm[1]
 
+    overlay = img.copy()
+    COLOR_GREEN = (80, 200, 16)     # BGR: Tô đúng (Xanh lá)
+    COLOR_AMBER = (11, 158, 245)    # BGR: Tô sai (Cam/Vàng)
+    COLOR_RED   = (0, 0, 255)       # BGR: Đáp án chuẩn (Đỏ)
+    COLOR_BLUE  = (248, 189, 56)    # BGR: Mã đề (Xanh dương)
+
+    st_p1 = student.get("answers_p1", [])
+    st_p2 = student.get("answers_p2", [])
+    st_p3 = student.get("answers_p3", [])
+
+    # 0. Khoanh xanh dương 3 ô Mã đề học sinh tô (ngay bên trái m_tl)
+    try:
+        idx_tl = t1_d.index(m_tl)
+        if idx_tl >= 1:
+            m_made_l = t1_d[idx_tl - 1]
+            W_made = m_tl[0] - m_made_l[0]
+            if 150 <= W_made <= 380:
+                for c_md, ch_md in enumerate(str(code)[:3]):
+                    if ch_md.isdigit():
+                        d_md = int(ch_md)
+                        cx_md = int(m_made_l[0] + (0.235 + c_md * 0.175) * W_made)
+                        cy_md = int(m_made_l[1] + (0.094 + d_md * 0.0908) * H1)
+                        cv2.circle(overlay, (cx_md, cy_md), 18, COLOR_BLUE, -1)
+                        cv2.circle(img, (cx_md, cy_md), 21, COLOR_BLUE, 3)
+    except Exception:
+        pass
+
     col_ratios = [0.240, 0.423, 0.606, 0.789]
     for q in range(12):
         ans = key['p1'][q]
         c_idx = OPTIONS_P1[ans]
-        if q < 10:
-            cx = int(m_tl[0] + col_ratios[c_idx] * W1)
-            cy = int(m_tl[1] + (0.094 + q * 0.0908) * H1)
-        else:
-            cx = int(m_tm[0] + col_ratios[c_idx] * W2)
-            cy = int(m_tm[1] + (0.094 + (q - 10) * 0.0908) * H2)
-        cv2.circle(img, (cx, cy), 22, (0, 0, 255), 4)
+        st_ans = st_p1[q] if q < len(st_p1) else ""
+
+        def p1_xy(opt_idx):
+            if q < 10:
+                return (int(m_tl[0] + col_ratios[opt_idx] * W1), int(m_tl[1] + (0.094 + q * 0.0908) * H1))
+            return (int(m_tm[0] + col_ratios[opt_idx] * W2), int(m_tm[1] + (0.094 + (q - 10) * 0.0908) * H2))
+
+        if st_ans in OPTIONS_P1:
+            scx, scy = p1_xy(OPTIONS_P1[st_ans])
+            cv2.circle(overlay, (scx, scy), 19, COLOR_GREEN if st_ans == ans else COLOR_AMBER, -1)
+
+        cx, cy = p1_xy(c_idx)
+        cv2.circle(img, (cx, cy), 22, COLOR_RED, 4)
 
     # 2. Định vị chuẩn xác 100% Phần II (Câu 13 và 14 Đúng/Sai)
     m2_13 = t2_d[0]
@@ -371,17 +431,27 @@ def annotate_omr_sheet(img_path, student, out_path):
     y_p2_ratios = [0.203, 0.391, 0.590, 0.790]
 
     for i, ans in enumerate(key['p2_13']):
+        st_ans = st_p2[i] if i < len(st_p2) else ""
+        if st_ans in ('Đ', 'S'):
+            scx = int(m2_13[0] + (0.241 if st_ans == 'Đ' else 0.543) * W_c13)
+            scy = int(m2_13[1] + y_p2_ratios[i] * H_c13)
+            cv2.circle(overlay, (scx, scy), 19, COLOR_GREEN if st_ans == ans else COLOR_AMBER, -1)
         cx = int(m2_13[0] + (0.241 if ans == 'Đ' else 0.543) * W_c13)
         cy = int(m2_13[1] + y_p2_ratios[i] * H_c13)
-        cv2.circle(img, (cx, cy), 22, (0, 0, 255), 4)
+        cv2.circle(img, (cx, cy), 22, COLOR_RED, 4)
 
     for i, ans in enumerate(key['p2_14']):
+        st_ans = st_p2[4 + i] if (4 + i) < len(st_p2) else ""
+        if st_ans in ('Đ', 'S'):
+            scx = int(m2_mid[0] + (0.241 if st_ans == 'Đ' else 0.543) * W_c14)
+            scy = int(m2_mid[1] + y_p2_ratios[i] * H_c14)
+            cv2.circle(overlay, (scx, scy), 19, COLOR_GREEN if st_ans == ans else COLOR_AMBER, -1)
         cx = int(m2_mid[0] + (0.241 if ans == 'Đ' else 0.543) * W_c14)
         cy = int(m2_mid[1] + y_p2_ratios[i] * H_c14)
-        cv2.circle(img, (cx, cy), 22, (0, 0, 255), 4)
+        cv2.circle(img, (cx, cy), 22, COLOR_RED, 4)
 
     # 3. Định vị chuẩn xác 100% Phần III (Câu 15 đến 18 Điền số)
-    left_bound = t1_d[0][0] - 60
+    left_bound = t1_d[0][0] - 150
     t3_valid = [pt for pt in t3_d if pt[0] >= left_bound]
     b3_valid = [pt for pt in b3_d if pt[0] >= left_bound]
 
@@ -408,20 +478,35 @@ def annotate_omr_sheet(img_path, student, out_path):
         H_q = m_bl_p3[1] - m_tl_p3[1]
         ans_str = key['p3'][i]
 
-        # Nhãn đáp án phía trên (không che ô viết tay)
+        st_p3_str = str(st_p3[i]).strip() if i < len(st_p3) else ""
+        is_p3_ok = (st_p3_str == ans_str)
+        box_col = COLOR_GREEN if is_p3_ok else COLOR_AMBER
+
+        # Nhãn đáp án phía trên (viền xanh nếu đúng, cam nếu sai)
         lbl_x = int(m_tl_p3[0] + 0.15 * W_q)
         lbl_y = int(m_tl_p3[1] - 165)
         cv2.rectangle(img, (lbl_x - 10, lbl_y - 45), (lbl_x + 200, lbl_y + 15), (255, 255, 255), -1)
-        cv2.rectangle(img, (lbl_x - 10, lbl_y - 45), (lbl_x + 200, lbl_y + 15), (0, 0, 255), 3)
-        cv2.putText(img, f"DA: {ans_str}", (lbl_x + 5, lbl_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+        cv2.rectangle(img, (lbl_x - 10, lbl_y - 45), (lbl_x + 200, lbl_y + 15), box_col, 4)
+        cv2.putText(img, f"DA: {ans_str}", (lbl_x + 5, lbl_y), cv2.FONT_HERSHEY_SIMPLEX, 1.2, box_col if is_p3_ok else COLOR_RED, 3)
 
-        # Khoanh tròn đỏ dead-center vào từng ô số OMR
+        # Tô màu ô học sinh điền (xanh nếu đúng, cam nếu sai)
+        for col_char_idx, ch in enumerate(st_p3_str):
+            if ch.isdigit():
+                digit = int(ch)
+                scx = int(m_tl_p3[0] + (0.248 + col_char_idx * 0.157) * W_q)
+                scy = int(m_tl_p3[1] + (0.229 + digit * 0.0804) * H_q)
+                cv2.circle(overlay, (scx, scy), 19, COLOR_GREEN if is_p3_ok else COLOR_AMBER, -1)
+
+        # Khoanh tròn đỏ dead-center vào từng ô số OMR đáp án chuẩn
         for col_char_idx, ch in enumerate(ans_str):
             if ch.isdigit():
                 digit = int(ch)
                 cx = int(m_tl_p3[0] + (0.248 + col_char_idx * 0.157) * W_q)
                 cy = int(m_tl_p3[1] + (0.229 + digit * 0.0804) * H_q)
-                cv2.circle(img, (cx, cy), 22, (0, 0, 255), 4)
+                cv2.circle(img, (cx, cy), 22, COLOR_RED, 4)
+
+    # Trộn lớp tô màu bán trong suốt lên ảnh gốc (vẫn giữ nguyên nét bút chì & vòng tròn đỏ sắc nét)
+    cv2.addWeighted(overlay, 0.45, img, 0.55, 0, img)
 
     # 4. Ghi điểm thành phần bằng mực đỏ (Sư phạm) ở dải lề trên cùng (không che thông tin học sinh)
     ann = VietnameseAnnotator(img)
@@ -440,7 +525,7 @@ def annotate_omr_sheet(img_path, student, out_path):
     ann.draw_text((130, 280), score_tn, size=40, color_bgr=(0, 0, 220), bold=True)
     
     stamp_y = 1040 if is_landscape else 1070
-    ann.draw_text((880, stamp_y), "[VÒNG TRÒN ĐỎ = ĐÁP ÁN CHUẨN BỘ ĐỀ]", size=38, color_bgr=(0, 0, 255), bold=True)
+    ann.draw_text((760, stamp_y), "[XANH = TÔ ĐÚNG | CAM = TÔ SAI | VIỀN ĐỎ = ĐÁP ÁN CHUẨN]", size=34, color_bgr=(0, 0, 220), bold=True)
     
     return imwrite_unicode(out_path, ann.to_bgr())
 

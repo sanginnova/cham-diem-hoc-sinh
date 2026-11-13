@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>SmartOMR 12 v21.3 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
+  <title>SmartOMR 12 v21.4 — Chấm Trắc Nghiệm Qua Camera Điện Thoại</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -91,7 +91,7 @@
         <div>
           <div class="flex items-center gap-1.5">
             <h1 class="text-sm sm:text-lg font-bold tracking-tight text-white">SmartOMR</h1>
-            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.3</span>
+            <span class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">v21.4</span>
             <button id="btnSyncModal" onclick="openSyncModal()" class="px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1 transition" title="Kết nối real-time giữa Điện thoại và Máy tính">
               <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
               <span id="syncStatusText">Kết nối PC/ĐT</span>
@@ -961,6 +961,8 @@
       // 1. Read Mã đề (3 columns at x=[375, 390, 405], 10 rows y = 441 + r*15)
       const madeCols = [375.0, 390.0, 405.0];
       let detectedCode = "";
+      let shadedColsCount = 0;
+      const madeThreshold = Math.max(18.0, deltaThresh * 1.30);
       for (let c = 0; c < 3; c++) {
         const vals = [];
         for (let r = 0; r < 10; r++) {
@@ -970,14 +972,20 @@
         const med = sorted[5];
         const minVal = sorted[0];
         const bestIdx = vals.indexOf(minVal);
-        detectedCode += (med - minVal >= deltaThresh) ? String(bestIdx) : "0";
+        if (med - minVal >= madeThreshold) {
+          detectedCode += String(bestIdx);
+          shadedColsCount++;
+        } else {
+          detectedCode += "-";
+        }
       }
-      appState.currentScan.detectedCode = detectedCode;
+      appState.currentScan.detectedCode = (shadedColsCount === 3) ? detectedCode : (shadedColsCount > 0 ? detectedCode : "Chưa tô");
 
       // 2. Read Phần I (Questions 1-10 in Col 1, Questions 11-12 in Col 2)
       const opts = ["A", "B", "C", "D"];
       const p1Ans = [];
       const p1Multi = [];
+      const p1Threshold = Math.max(18.0, deltaThresh * 1.30);
       for (let q = 0; q < 12; q++) {
         const isCol2 = q >= 10;
         const baseX = isCol2 ? 542.5 : 458.0;
@@ -989,12 +997,13 @@
         const maxVal = Math.max(...vals);
         const minVal = Math.min(...vals);
         const bestC = vals.indexOf(minVal);
-        if (maxVal - minVal < Math.max(6, deltaThresh * 0.45)) {
+        // Genuine pencil mark must differ by at least p1Threshold from unshaded bubbles in the same question
+        if (maxVal - minVal < p1Threshold) {
           p1Ans.push("Trống");
           p1Multi.push(false);
         } else {
-          // Check if two bubbles are shaded darkly
-          const darkCount = vals.filter(v => maxVal - v > deltaThresh * 1.35 && v - minVal < 8).length;
+          // Check if multiple bubbles are shaded darkly
+          const darkCount = vals.filter(v => maxVal - v >= p1Threshold * 0.90).length;
           p1Ans.push(opts[bestC]);
           p1Multi.push(darkCount > 1);
         }
@@ -1007,13 +1016,14 @@
         { key: "q13", cols: [262.5, 278.0] },
         { key: "q14", cols: [327.5, 343.0] }
       ];
+      const p2Threshold = Math.max(18.0, deltaThresh * 1.25);
       p2Configs.forEach(cfg => {
         const subAns = [];
         for (let r = 0; r < 4; r++) {
           const cy = 665.0 + r * 15.5;
           const vD = sampleBubbleAtRef(imgData, w, h, cfg.cols[0], cy);
           const vS = sampleBubbleAtRef(imgData, w, h, cfg.cols[1], cy);
-          if (Math.abs(vD - vS) < 5.0) {
+          if (Math.abs(vD - vS) < p2Threshold) {
             subAns.push("Trống");
           } else {
             subAns.push(vD < vS ? "Đ" : "S");
@@ -1030,7 +1040,7 @@
         { key: "q18", cols: [517.5, 533.0, 548.5, 564.0] }
       ];
       const rowLabels = ["-", ",", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-      const p3Thresh = Math.max(18.0, deltaThresh * 1.45);
+      const p3Thresh = Math.max(20.0, deltaThresh * 1.45);
       p3Configs.forEach(cfg => {
         let numStr = "";
         for (let c = 0; c < 4; c++) {
@@ -1061,10 +1071,12 @@
     function getEffectiveExamCode() {
       const manual = appState.currentScan.manualCode;
       if (manual && manual !== "AUTO") return manual;
-      const det = appState.currentScan.detectedCode || "104";
-      if (appState.examKeys[det]) return det;
+      const det = appState.currentScan.detectedCode;
+      if (det && appState.examKeys[det]) return det;
+      if (det === "Chưa tô" || !det || det === "---" || det.includes("-")) return "Chưa tô";
       if (det === "001" || det === "01") return "101";
       if (det === "002" || det === "02") return "102";
+      if (det === "004" || det === "04") return "104";
       return "104";
     }
 
@@ -1163,7 +1175,7 @@
       const scan = appState.currentScan;
       document.getElementById("resStudentTitle").textContent = `${scan.studentName || "Chưa nhập tên"} — ${scan.studentClass || "12B1"}`;
       document.getElementById("resExamCodeBadge").textContent = code;
-      document.getElementById("resExamKeyStatus").textContent = appState.examKeys[code] ? "Khớp bộ đề" : "Dùng mã 104";
+      document.getElementById("resExamKeyStatus").textContent = (code === "Chưa tô") ? "Chưa tô mã đề" : (appState.examKeys[code] ? "Khớp bộ đề" : "Dùng mã 104");
 
       document.getElementById("scoreTotalTN").textContent = scan.scores.totalTN.toFixed(2);
       document.getElementById("scorePart1").textContent = scan.scores.p1.toFixed(2);
@@ -1337,16 +1349,18 @@
         const opts = ["A", "B", "C", "D"];
 
         // 1. Highlight Mã đề bubbles
-        const madeCols = [375.0, 390.0, 405.0];
-        for (let c = 0; c < 3; c++) {
-          const d = parseInt(code[c] || "0", 10);
-          if (!isNaN(d)) {
-            const pt = refToImagePoint(madeCols[c], 441.0 + d * 15.0);
-            ctx.beginPath();
-            ctx.arc(pt.x, pt.y, 7.2 * scale, 0, Math.PI * 2);
-            ctx.strokeStyle = "#38bdf8";
-            ctx.lineWidth = 2.2 * scale;
-            ctx.stroke();
+        if (code !== "Chưa tô") {
+          const madeCols = [375.0, 390.0, 405.0];
+          for (let c = 0; c < 3; c++) {
+            const d = parseInt(code[c] || "0", 10);
+            if (!isNaN(d)) {
+              const pt = refToImagePoint(madeCols[c], 441.0 + d * 15.0);
+              ctx.beginPath();
+              ctx.arc(pt.x, pt.y, 7.2 * scale, 0, Math.PI * 2);
+              ctx.strokeStyle = "#38bdf8";
+              ctx.lineWidth = 2.2 * scale;
+              ctx.stroke();
+            }
           }
         }
 

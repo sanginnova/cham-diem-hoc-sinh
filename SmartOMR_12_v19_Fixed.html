@@ -1114,7 +1114,7 @@
         } else {
           // Genuine double-fill vs lightly erased mistake:
           // A secondary bubble must be at least 65% as dark as primary mark to be considered a conflicting choice
-          const darkCount = vals.filter(v => (maxVal - v >= p1Threshold) && (maxVal - v >= primaryDelta * 0.65)).length;
+          const darkCount = vals.filter(v => (maxVal - v >= p1Threshold) && (maxVal - v >= primaryDelta * 0.85) && (maxVal - v >= 35.0)).length;
           p1Ans.push(opts[bestC]);
           p1Multi.push(darkCount > 1);
         }
@@ -1152,7 +1152,7 @@
         { key: "q18", cols: [517.5, 533.0, 548.5, 564.0] }
       ];
       const rowLabels = ["-", ",", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-      const p3Thresh = Math.max(7.5, deltaThresh * 0.80);
+      const p3Thresh = Math.max(30.0, deltaThresh * 2.2);
       p3Configs.forEach(cfg => {
         let numStr = "";
         for (let c = 0; c < 4; c++) {
@@ -1167,7 +1167,8 @@
           const med = valid[Math.floor(valid.length / 2)];
           const minVal = valid[0];
           const bestR = vals.indexOf(minVal);
-          if (med - minVal >= p3Thresh) {
+          // Only register column if contrast is substantial AND darkest bubble is genuinely dark (< 125)
+          if ((med - minVal >= p3Thresh) && minVal < 125) {
             numStr += rowLabels[bestR];
           }
         }
@@ -1201,7 +1202,8 @@
       if (det === "002" || det === "02") return "102";
       if (det === "003" || det === "03") return "103";
       if (det === "004" || det === "04") return "104";
-      return "104";
+      // Return raw detected code or unrecognized marker — NEVER silently fall back to 104!
+      return det;
     }
 
     function scorePart2Question(studentArr, keyArr) {
@@ -1219,8 +1221,28 @@
 
     function recalculateScoresFromState() {
       const code = getEffectiveExamCode();
-      const keyObj = appState.examKeys[code] || appState.examKeys["104"];
+      const isCodeValid = !!(code && appState.examKeys[code]);
+      const keyObj = isCodeValid ? appState.examKeys[code] : null;
       const scan = appState.currentScan;
+
+      if (!isCodeValid) {
+        const essayVal = parseFloat(document.getElementById("inpEssayScore")?.value || "0") || 0;
+        scan.essayScore = Math.min(3, Math.max(0, essayVal));
+        scan.scores = {
+          p1: 0, p1Correct: 0,
+          p2: 0, p2CorrectY: 0,
+          p3: 0, p3Correct: 0,
+          totalTN: 0,
+          grandTotal: scan.essayScore
+        };
+        const statusMsg = (code === "Chưa tô" || !code)
+          ? "Chưa tô mã đề (0.00đ) — Vui lòng chọn mã đề ở mục Chọn nhanh mã đề"
+          : `Mã đề "${code}" không có trong bộ đáp án (0.00đ) — hãy kiểm tra lại!`;
+        scan.mistakesText = `⚠️ ${statusMsg}`;
+        updateScannerScoreUI(code, null, statusMsg, "", "");
+        renderOMRCanvas();
+        return;
+      }
 
       // Part I (12 questions * 0.25 = 3.0)
       let p1Correct = 0;
@@ -1299,7 +1321,17 @@
       const scan = appState.currentScan;
       document.getElementById("resStudentTitle").textContent = `${scan.studentName || "Chưa nhập tên"} — ${scan.studentClass || "12B1"}`;
       document.getElementById("resExamCodeBadge").textContent = code;
-      document.getElementById("resExamKeyStatus").textContent = (code === "Chưa tô") ? "Chưa tô mã đề" : (appState.examKeys[code] ? "Khớp bộ đề" : "Dùng mã 104");
+      const keyBadgeEl = document.getElementById("resExamKeyStatus");
+      if (code === "Chưa tô" || !code) {
+        keyBadgeEl.textContent = "Chưa tô mã đề";
+        keyBadgeEl.className = "text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/40";
+      } else if (appState.examKeys[code]) {
+        keyBadgeEl.textContent = "Khớp bộ đề";
+        keyBadgeEl.className = "text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/40";
+      } else {
+        keyBadgeEl.textContent = `⚠️ Không khớp đề (${code})`;
+        keyBadgeEl.className = "text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/40";
+      }
 
       document.getElementById("scoreTotalTN").textContent = scan.scores.totalTN.toFixed(2);
       document.getElementById("scorePart1").textContent = scan.scores.p1.toFixed(2);
@@ -1332,18 +1364,22 @@
       const p1Grid = document.getElementById("part1DetailGrid");
       const opts = ["A", "B", "C", "D"];
       p1Grid.innerHTML = scan.p1Answers.map((stAns, idx) => {
-        const correctAns = keyObj.p1[idx];
-        const isCorrect = stAns === correctAns;
+        const correctAns = keyObj ? keyObj.p1[idx] : "-";
+        const isMulti = !!scan.p1Multi[idx];
+        const isCorrect = keyObj ? (stAns === correctAns && !isMulti) : false;
         const btns = opts.map(o => {
           let cls = "bg-slate-800 text-slate-400 border-slate-700";
-          if (o === stAns && isCorrect) cls = "bg-emerald-600 text-white border-emerald-400 font-bold";
+          if (o === stAns && isMulti) cls = "bg-amber-600 text-white border-amber-400 font-bold";
+          else if (o === stAns && isCorrect) cls = "bg-emerald-600 text-white border-emerald-400 font-bold";
           else if (o === stAns && !isCorrect) cls = "bg-rose-600 text-white border-rose-400 font-bold";
           else if (o === correctAns && !isCorrect) cls = "bg-slate-900 text-rose-400 border-rose-500 font-bold";
           return `<button onclick="overrideP1Answer(${idx}, '${o}')" class="w-6 h-6 rounded-full border text-[11px] transition ${cls}">${o}</button>`;
         }).join("");
+        const borderCls = isMulti ? 'border-amber-500/50' : (isCorrect ? 'border-slate-800' : 'border-rose-500/40');
+        const labelCls = isMulti ? 'text-amber-300' : (isCorrect ? 'text-slate-300' : 'text-rose-300');
         return `
-          <div class="flex items-center justify-between bg-slate-950/80 border ${isCorrect ? 'border-slate-800' : 'border-rose-500/40'} rounded-xl px-2.5 py-1.5">
-            <span class="text-xs font-semibold ${isCorrect ? 'text-slate-300' : 'text-rose-300'}">C${idx + 1}</span>
+          <div class="flex items-center justify-between bg-slate-950/80 border ${borderCls} rounded-xl px-2.5 py-1.5">
+            <span class="text-xs font-semibold ${labelCls}">C${idx + 1}${isMulti ? ' <span class="text-[9px] text-amber-400 font-normal">(tô đè)</span>' : ''}</span>
             <div class="flex items-center gap-1">${btns}</div>
           </div>
         `;
@@ -1355,7 +1391,7 @@
       p2Grid.innerHTML = ["q13", "q14"].map((qk, qIdx) => {
         const qNum = 13 + qIdx;
         const stArr = scan.p2Answers[qk];
-        const keyArr = keyObj.p2[qk];
+        const keyArr = keyObj ? keyObj.p2[qk] : Array(4).fill("—");
         const qScore = scorePart2Question(stArr, keyArr);
         const rowsHtml = subLabels.map((lbl, rIdx) => {
           const st = stArr[rIdx];
@@ -1389,23 +1425,43 @@
         `;
       }).join("");
 
-      // Render interactive Part III inputs
+      // Render interactive Part III inputs without destroying focused inputs
       const p3Grid = document.getElementById("part3DetailGrid");
-      p3Grid.innerHTML = ["q15", "q16", "q17", "q18"].map((qk, idx) => {
+      const normVal = v => String(v || "").trim().replace(/\s+/g, "").replace(".", ",");
+      ["q15", "q16", "q17", "q18"].forEach((qk, idx) => {
         const qNum = 15 + idx;
-        const stVal = scan.p3Answers[qk];
-        const corVal = keyObj.p3[qk];
-        const ok = String(stVal).trim() === String(corVal).trim();
-        return `
-          <div class="bg-slate-950/80 border ${ok ? 'border-slate-800' : 'border-rose-500/50'} rounded-xl p-2.5 flex items-center justify-between gap-2">
+        const stVal = scan.p3Answers[qk] || "";
+        const corVal = keyObj ? (keyObj.p3[qk] || "") : "-";
+        const ok = keyObj ? (normVal(stVal) === normVal(corVal)) : false;
+
+        let itemEl = document.getElementById(`p3ItemBox_${qk}`);
+        if (!itemEl) {
+          const wrap = document.createElement("div");
+          wrap.id = `p3ItemBox_${qk}`;
+          wrap.className = `bg-slate-950/80 border ${ok ? 'border-slate-800' : 'border-rose-500/50'} rounded-xl p-2.5 flex items-center justify-between gap-2`;
+          wrap.innerHTML = `
             <div>
-              <div class="text-xs font-bold ${ok ? 'text-white' : 'text-rose-300'}">Câu ${qNum}</div>
-              <div class="text-[11px] text-emerald-400 font-mono-code">ĐA chuẩn: ${corVal}</div>
+              <div id="p3Label_${qk}" class="text-xs font-bold ${ok ? 'text-white' : 'text-rose-300'}">Câu ${qNum}</div>
+              <div id="p3AnsLabel_${qk}" class="text-[11px] text-emerald-400 font-mono-code">ĐA chuẩn: ${corVal}</div>
             </div>
-            <input type="text" value="${stVal}" oninput="overrideP3Answer('${qk}', this.value)" class="w-16 bg-slate-900 border ${ok ? 'border-emerald-500/50 text-emerald-300' : 'border-rose-500 text-rose-300'} rounded-lg px-2 py-1 text-center font-mono-code text-xs font-bold" />
-          </div>
-        `;
-      }).join("");
+            <input id="p3Input_${qk}" type="text" value="${stVal}" oninput="overrideP3Answer('${qk}', this.value)" class="w-16 bg-slate-900 border ${ok ? 'border-emerald-500/50 text-emerald-300' : 'border-rose-500 text-rose-300'} rounded-lg px-2 py-1 text-center font-mono-code text-xs font-bold" />
+          `;
+          p3Grid.appendChild(wrap);
+        } else {
+          itemEl.className = `bg-slate-950/80 border ${ok ? 'border-slate-800' : 'border-rose-500/50'} rounded-xl p-2.5 flex items-center justify-between gap-2`;
+          const lbl = document.getElementById(`p3Label_${qk}`);
+          if (lbl) lbl.className = `text-xs font-bold ${ok ? 'text-white' : 'text-rose-300'}`;
+          const aLbl = document.getElementById(`p3AnsLabel_${qk}`);
+          if (aLbl) aLbl.textContent = `ĐA chuẩn: ${corVal}`;
+          const inp = document.getElementById(`p3Input_${qk}`);
+          if (inp) {
+            if (document.activeElement !== inp && inp.value !== stVal) {
+              inp.value = stVal;
+            }
+            inp.className = `w-16 bg-slate-900 border ${ok ? 'border-emerald-500/50 text-emerald-300' : 'border-rose-500 text-rose-300'} rounded-lg px-2 py-1 text-center font-mono-code text-xs font-bold`;
+          }
+        }
+      });
       if (appState.currentScan.autoSaved) saveCurrentResultToRoster(true);
     }
 
@@ -1466,8 +1522,9 @@
       const showOverlay = document.getElementById("chkShowOverlay")?.checked ?? true;
       const drawTopStamp = document.getElementById("chkDrawTopStamp")?.checked ?? true;
       const code = getEffectiveExamCode();
-      const keyObj = appState.examKeys[code] || appState.examKeys["104"];
+      const keyObj = appState.examKeys[code];
       const scan = appState.currentScan;
+      if (!keyObj) return;
 
       if (showOverlay) {
         const opts = ["A", "B", "C", "D"];
@@ -1817,7 +1874,7 @@
       if (!currentSourceImage) return 0;
       const w = currentSourceImage.naturalWidth || REF_WIDTH;
       const h = currentSourceImage.naturalHeight || REF_HEIGHT;
-      const detW = Math.min(w, 600);
+      const detW = Math.min(w, 800);
       const detH = Math.max(100, Math.round((detW * h) / w));
       offscreenCanvas.width = detW;
       offscreenCanvas.height = detH;
@@ -1835,8 +1892,8 @@
       if (!silent) {
         showToast(
           res.okCount === 4
-            ? "Đã tự động bắt chuẩn 4/4 ô vuông lưới nội bộ!"
-            : `Đã bắt ${res.okCount}/4 góc — kéo nhẹ góc còn lại nếu cần.`
+            ? "Đã tự động bắt chuẩn 4/4 góc định vị OMR!"
+            : `Đã bắt ${res.okCount}/4 góc — kiểm tra và căn chỉnh 4 góc nếu cần.`
         );
       }
       return res.okCount;
@@ -1869,73 +1926,19 @@
 
       const sx = w / REF_WIDTH;
       const sy = h / REF_HEIGHT;
-      const rIn = Math.max(4, Math.round(7.5 * sx));
-      const rOut = Math.max(9, Math.round(18.0 * sx));
-      const step = Math.max(2, Math.round(w / 320));
-
-      const gRIn = Math.max(4, Math.round(0.007 * w));
-      const gROut = Math.max(9, Math.round(0.017 * w));
+      const gRIn = Math.max(3, Math.round(7.5 * sx));
+      const gROut = Math.max(8, Math.round(18.0 * sx));
       const gInArea = (2 * gRIn) * (2 * gRIn);
       const gOutArea = (2 * gROut) * (2 * gROut);
 
-      function findFiducialNear(refPt) {
-        const expX = refPt.x * sx;
-        const expY = refPt.y * sy;
-        const winX = Math.round(0.16 * w);
-        const winY = Math.round(0.14 * h);
-        const x0 = Math.max(rOut + 1, Math.round(expX - winX));
-        const x1 = Math.min(w - rOut - 1, Math.round(expX + winX));
-        const y0 = Math.max(rOut + 1, Math.round(expY - winY));
-        const y1 = Math.min(h - rOut - 1, Math.round(expY + winY));
-
-        let bestScore = -1e9;
-        let bestX = expX;
-        let bestY = expY;
-        let bestContrast = 0;
-
-        for (let y = y0; y <= y1; y += step) {
-          for (let x = x0; x <= x1; x += step) {
-            const inner = boxMean(x - rIn, y - rIn, x + rIn, y + rIn);
-            if (inner > 150) continue;
-            const outerAll = boxMean(x - rOut, y - rOut, x + rOut, y + rOut);
-            const innerArea = (2 * rIn) * (2 * rIn);
-            const outerArea = (2 * rOut) * (2 * rOut);
-            const ringMean = (outerAll * outerArea - inner * innerArea) / (outerArea - innerArea);
-            const contrast = ringMean - inner;
-            if (contrast < 26) continue;
-            const distPenalty = Math.hypot(x - expX, y - expY) * 0.08;
-            const score = contrast - distPenalty;
-            if (score > bestScore) {
-              bestScore = score;
-              bestX = x;
-              bestY = y;
-              bestContrast = contrast;
-            }
-          }
-        }
-        if (bestContrast >= 26) {
-          let fineBest = -1e9;
-          let fx = bestX, fy = bestY;
-          for (let y = Math.max(rOut + 1, bestY - step); y <= Math.min(h - rOut - 1, bestY + step); y++) {
-            for (let x = Math.max(rOut + 1, bestX - step); x <= Math.min(w - rOut - 1, bestX + step); x++) {
-              const inner = boxMean(x - rIn, y - rIn, x + rIn, y + rIn);
-              const outerAll = boxMean(x - rOut, y - rOut, x + rOut, y + rOut);
-              const innerArea = (2 * rIn) * (2 * rIn);
-              const outerArea = (2 * rOut) * (2 * rOut);
-              const ringMean = (outerAll * outerArea - inner * innerArea) / (outerArea - innerArea);
-              const sc = ringMean - inner;
-              if (sc > fineBest) { fineBest = sc; fx = x; fy = y; }
-            }
-          }
-          return { x: fx, y: fy, ok: true };
-        }
-        return { x: expX, y: expY, ok: false };
-      }
-
-      const localSnapCorner = (px, py, rad = Math.round(0.07 * w)) => {
+      const localSnapCorner = (px, py, rad = Math.round(0.08 * w)) => {
         let bSc = -1e9, bX = Math.round(px), bY = Math.round(py);
-        for (let yy = Math.max(gROut + 1, Math.round(py - rad)); yy <= Math.min(h - gROut - 1, Math.round(py + rad)); yy += 2) {
-          for (let xx = Math.max(gROut + 1, Math.round(px - rad)); xx <= Math.min(w - gROut - 1, Math.round(px + rad)); xx += 2) {
+        const y0 = Math.max(gROut + 1, Math.round(py - rad));
+        const y1 = Math.min(h - gROut - 1, Math.round(py + rad));
+        const x0 = Math.max(gROut + 1, Math.round(px - rad));
+        const x1 = Math.min(w - gROut - 1, Math.round(px + rad));
+        for (let yy = y0; yy <= y1; yy += 2) {
+          for (let xx = x0; xx <= x1; xx += 2) {
             const inn = boxMean(xx - gRIn, yy - gRIn, xx + gRIn, yy + gRIn);
             if (inn > 165) continue;
             const outA = boxMean(xx - gROut, yy - gROut, xx + gROut, yy + gROut);
@@ -1943,7 +1946,20 @@
             if (sc > bSc) { bSc = sc; bX = xx; bY = yy; }
           }
         }
-        return bSc >= 20 ? { x: bX, y: bY, ok: true, sc: bSc } : { x: Math.round(px), y: Math.round(py), ok: false, sc: 0 };
+        if (bSc >= 22) {
+          // Sub-pixel fine search
+          let fineBest = -1e9, fx = bX, fy = bY;
+          for (let yy = Math.max(gROut + 1, bY - 2); yy <= Math.min(h - gROut - 1, bY + 2); yy++) {
+            for (let xx = Math.max(gROut + 1, bX - 2); xx <= Math.min(w - gROut - 1, bX + 2); xx++) {
+              const inn = boxMean(xx - gRIn, yy - gRIn, xx + gRIn, yy + gRIn);
+              const outA = boxMean(xx - gROut, yy - gROut, xx + gROut, yy + gROut);
+              const sc = (outA * gOutArea - inn * gInArea) / (gOutArea - gInArea) - inn;
+              if (sc > fineBest) { fineBest = sc; fx = xx; fy = yy; }
+            }
+          }
+          return { x: fx, y: fy, ok: true, sc: fineBest };
+        }
+        return { x: Math.round(px), y: Math.round(py), ok: false, sc: bSc };
       };
 
       function searchFiducialInBox(b, cornerType) {
@@ -1954,32 +1970,27 @@
         const y1 = Math.min(h - gROut - 1, Math.round(b.y + b.h));
         if (x1 <= x0 || y1 <= y0) return null;
         let bSc = -1e9, bX = -1, bY = -1, bContrast = 0;
-        for (let y = y0; y <= y1; y += step) {
-          for (let x = x0; x <= x1; x += step) {
+        for (let y = y0; y <= y1; y += 2) {
+          for (let x = x0; x <= x1; x += 2) {
             const inner = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
             if (inner > 160) continue;
             const outerAll = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
             const ringMean = (outerAll * gOutArea - inner * gInArea) / (gOutArea - gInArea);
             const contrast = ringMean - inner;
             if (contrast < 18) continue;
-
-            // Directional priority: strongly prefers the outermost corner square of the OMR grid
             let dirBonus = 0;
             if (cornerType === 'tl') dirBonus = -(x - x0) * 0.05 - (y - y0) * 0.05;
             else if (cornerType === 'tr') dirBonus = (x - x0) * 0.05 - (y - y0) * 0.05;
             else if (cornerType === 'bl') dirBonus = -(x - x0) * 0.05 + (y - y0) * 0.05;
             else if (cornerType === 'br') dirBonus = (x - x0) * 0.05 + (y - y0) * 0.05;
-
             const sc = contrast + dirBonus;
-            if (sc > bSc) {
-              bSc = sc; bX = x; bY = y; bContrast = contrast;
-            }
+            if (sc > bSc) { bSc = sc; bX = x; bY = y; bContrast = contrast; }
           }
         }
         if (bSc > 0 && bContrast >= 18) {
           let fineBest = -1e9, fx = bX, fy = bY;
-          for (let y = Math.max(gROut + 1, bY - step); y <= Math.min(h - gROut - 1, bY + step); y++) {
-            for (let x = Math.max(gROut + 1, bX - step); x <= Math.min(w - gROut - 1, bX + step); x++) {
+          for (let y = Math.max(gROut + 1, bY - 2); y <= Math.min(h - gROut - 1, bY + 2); y++) {
+            for (let x = Math.max(gROut + 1, bX - 2); x <= Math.min(w - gROut - 1, bX + 2); x++) {
               const inn = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
               const outA = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
               const sc = (outA * gOutArea - inn * gInArea) / (gOutArea - gInArea) - inn;
@@ -1991,11 +2002,9 @@
         return null;
       }
 
-      let tlOut = null, trOut = null, blRough = null, brOut = null;
-      let hintSuccess = false;
+      let tlOut = null, trOut = null, blOut = null, brOut = null;
 
-      // Method 1: Target Guide Boxes Mode (Live Camera Loop)
-      // When user holds the phone, the 4 fiducials are positioned directly inside the 4 onscreen boxes
+      // Mode A: Camera Guide Boxes (Live Camera)
       if (hintBoxes && hintBoxes.tl && hintBoxes.tr && hintBoxes.bl && hintBoxes.br) {
         let hTL = searchFiducialInBox(hintBoxes.tl, 'tl');
         let hTR = searchFiducialInBox(hintBoxes.tr, 'tr');
@@ -2003,254 +2012,106 @@
         let hBR = searchFiducialInBox(hintBoxes.br, 'br');
 
         const foundList = [
-          { k: 'tl', pt: hTL },
-          { k: 'tr', pt: hTR },
-          { k: 'bl', pt: hBL },
-          { k: 'br', pt: hBR }
+          { k: 'tl', pt: hTL }, { k: 'tr', pt: hTR },
+          { k: 'bl', pt: hBL }, { k: 'br', pt: hBR }
         ].filter(item => item.pt && item.pt.ok);
 
-        // If 3 of 4 found, repair the missing 4th via parallelogram
         if (foundList.length === 3) {
           if (!hTL) {
             const pred = { x: hTR.x + hBL.x - hBR.x, y: hTR.y + hBL.y - hBR.y };
-            const snapped = localSnapCorner(pred.x, pred.y);
-            hTL = snapped.ok ? snapped : { x: pred.x, y: pred.y, ok: true };
+            const sn = localSnapCorner(pred.x, pred.y);
+            hTL = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
           } else if (!hTR) {
             const pred = { x: hTL.x + hBR.x - hBL.x, y: hTL.y + hBR.y - hBL.y };
-            const snapped = localSnapCorner(pred.x, pred.y);
-            hTR = snapped.ok ? snapped : { x: pred.x, y: pred.y, ok: true };
+            const sn = localSnapCorner(pred.x, pred.y);
+            hTR = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
           } else if (!hBL) {
             const pred = { x: hTL.x + hBR.x - hTR.x, y: hTL.y + hBR.y - hTR.y };
-            const snapped = localSnapCorner(pred.x, pred.y);
-            hBL = snapped.ok ? snapped : { x: pred.x, y: pred.y, ok: true };
+            const sn = localSnapCorner(pred.x, pred.y);
+            hBL = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
           } else if (!hBR) {
             const pred = { x: hTR.x + hBL.x - hTL.x, y: hTR.y + hBL.y - hTL.y };
-            const snapped = localSnapCorner(pred.x, pred.y);
-            hBR = snapped.ok ? snapped : { x: pred.x, y: pred.y, ok: true };
+            const sn = localSnapCorner(pred.x, pred.y);
+            hBR = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
           }
         }
-
         if (hTL && hTR && hBL && hBR) {
-          const wt = Math.hypot(hTR.x - hTL.x, hTR.y - hTL.y);
-          const wb = Math.hypot(hBR.x - hBL.x, hBR.y - hBL.y);
-          const hl = Math.hypot(hBL.x - hTL.x, hBL.y - hTL.y);
-          const hr = Math.hypot(hBR.x - hTR.x, hBR.y - hTR.y);
-          const wAvg = (wt + wb) / 2;
-          const hAvg = (hl + hr) / 2;
-          const ar = wAvg > 0 ? hAvg / wAvg : 0;
-          if (wAvg > 0.22 * w && hAvg > 0.32 * h && ar >= 1.15 && ar <= 1.80 && hTR.x > hTL.x + 0.20 * w && hBL.y > hTL.y + 0.25 * h) {
-            tlOut = hTL;
-            trOut = hTR;
-            blRough = hBL;
-            brOut = hBR;
-            hintSuccess = true;
-          }
+          tlOut = hTL; trOut = hTR; blOut = hBL; brOut = hBR;
         }
       }
 
-      // Method 2: Global Quadrilateral Outer-Corner Search
-      // Picks the 4 outermost fiducials forming the maximum-area valid sheet rectangle (never internal timing marks)
-      if (!hintSuccess) {
-        const gStep = Math.max(2, Math.round(w / 260));
-        const gCands = [];
-        const gxMin = Math.max(gROut + 1, Math.round(0.04 * w));
-        const gxMax = Math.min(w - gROut - 1, Math.round(0.96 * w));
-        const gyMin = Math.max(gROut + 1, Math.round(0.04 * h));
-        const gyMax = Math.min(h - gROut - 1, Math.round(0.96 * h));
+      // Mode B: File upload / Image sample / Standard auto-alignment
+      // Local snap around reference corners (or existing corners)
+      if (!tlOut || !trOut || !blOut || !brOut) {
+        const refTL = { x: REF_CORNERS.tl.x * sx, y: REF_CORNERS.tl.y * sy };
+        const refTR = { x: REF_CORNERS.tr.x * sx, y: REF_CORNERS.tr.y * sy };
+        const refBL = { x: REF_CORNERS.bl.x * sx, y: REF_CORNERS.bl.y * sy };
+        const refBR = { x: REF_CORNERS.br.x * sx, y: REF_CORNERS.br.y * sy };
 
-        for (let y = gyMin; y <= gyMax; y += gStep) {
-          for (let x = gxMin; x <= gxMax; x += gStep) {
-            const inner = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
-            if (inner > 150) continue;
-            const outerAll = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
-            const ringMean = (outerAll * gOutArea - inner * gInArea) / (gOutArea - gInArea);
-            if (ringMean < 100) continue;
-            const contrast = ringMean - inner;
-            if (contrast < 28) continue;
-            const topS = boxMean(x - gRIn, y - gROut, x + gRIn, y - gRIn - 1);
-            const botS = boxMean(x - gRIn, y + gRIn + 1, x + gRIn, y + gROut);
-            const lftS = boxMean(x - gROut, y - gRIn, x - gRIn - 1, y + gRIn);
-            const rgtS = boxMean(x + gRIn + 1, y - gRIn, x + gROut, y + gRIn);
-            if (Math.max(topS, botS) - inner < 20 || Math.max(lftS, rgtS) - inner < 20) continue;
-            gCands.push({ sc: contrast, x, y });
-          }
-        }
-        gCands.sort((a, b) => b.sc - a.sc);
-        const gKept = [];
-        const minNmsD = gROut * 1.8;
-        for (const c of gCands) {
-          if (gKept.every(k => Math.hypot(c.x - k.x, c.y - k.y) > minNmsD)) {
-            gKept.push(c);
-          }
-        }
+        let sTL = localSnapCorner(refTL.x, refTL.y);
+        let sTR = localSnapCorner(refTR.x, refTR.y);
+        let sBL = localSnapCorner(refBL.x, refBL.y);
+        let sBR = localSnapCorner(refBR.x, refBR.y);
 
-        // 4 Candidate Pools for the outermost sheet corners
-        const poolTL = [...gKept].sort((a, b) => (a.x + 1.25 * a.y) - (b.x + 1.25 * b.y)).slice(0, 6);
-        const poolTR = [...gKept].sort((a, b) => (-a.x + 1.25 * a.y) - (-b.x + 1.25 * b.y)).slice(0, 6);
-        const poolBL = [...gKept].sort((a, b) => (a.x - 1.25 * a.y) - (b.x - 1.25 * b.y)).slice(0, 6);
-        const poolBR = [...gKept].sort((a, b) => (-a.x - 1.25 * a.y) - (-b.x - 1.25 * b.y)).slice(0, 6);
+        // If at least 3 corners detected, recover the 4th via parallelogram geometry
+        const okArr = [sTL.ok, sTR.ok, sBL.ok, sBR.ok];
+        const okNum = okArr.filter(Boolean).length;
 
-        let bestQuadScore = -1e9;
-        let bestQuad = null;
-
-        for (const pTL of poolTL) {
-          for (const pTR of poolTR) {
-            const wt = Math.hypot(pTR.x - pTL.x, pTR.y - pTL.y);
-            if (wt < 0.26 * w || pTR.x <= pTL.x + 0.22 * w) continue;
-            for (const pBL of poolBL) {
-              const hl = Math.hypot(pBL.x - pTL.x, pBL.y - pTL.y);
-              if (hl < 0.35 * h || pBL.y <= pTL.y + 0.28 * h) continue;
-              for (const pBR of poolBR) {
-                const wb = Math.hypot(pBR.x - pBL.x, pBR.y - pBL.y);
-                const hr = Math.hypot(pBR.x - pTR.x, pBR.y - pTR.y);
-                if (wb < 0.26 * w || hr < 0.35 * h || pBR.x <= pBL.x + 0.22 * w || pBR.y <= pTR.y + 0.28 * h) continue;
-
-                const wAvg = (wt + wb) / 2;
-                const hAvg = (hl + hr) / 2;
-                const ar = hAvg / wAvg; // Target physical aspect ratio ~1.470
-                if (ar < 1.18 || ar > 1.78) continue;
-
-                const distX = Math.abs(wt - wb) / wAvg;
-                const distY = Math.abs(hl - hr) / hAvg;
-                if (Math.max(distX, distY) > 0.18) continue;
-
-                const diag1 = Math.hypot(pBR.x - pTL.x, pBR.y - pTL.y);
-                const diag2 = Math.hypot(pTR.x - pBL.x, pTR.y - pBL.y);
-                const distDiag = Math.abs(diag1 - diag2) / ((diag1 + diag2) / 2);
-                if (distDiag > 0.20) continue;
-
-                const area = wAvg * hAvg;
-                const quadScore = area * (1.0 - 1.8 * Math.abs(ar - 1.470) - distX - distY);
-                if (quadScore > bestQuadScore) {
-                  bestQuadScore = quadScore;
-                  bestQuad = { tl: pTL, tr: pTR, bl: pBL, br: pBR };
-                }
-              }
-            }
+        if (okNum === 3) {
+          if (!sTL.ok) {
+            const pred = { x: sTR.x + sBL.x - sBR.x, y: sTR.y + sBL.y - sBR.y };
+            const sn = localSnapCorner(pred.x, pred.y);
+            sTL = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
+          } else if (!sTR.ok) {
+            const pred = { x: sTL.x + sBR.x - sBL.x, y: sTL.y + sBR.y - sBL.y };
+            const sn = localSnapCorner(pred.x, pred.y);
+            sTR = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
+          } else if (!sBL.ok) {
+            const pred = { x: sTL.x + sBR.x - sTR.x, y: sTL.y + sBR.y - sTR.y };
+            const sn = localSnapCorner(pred.x, pred.y);
+            sBL = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
+          } else if (!sBR.ok) {
+            const pred = { x: sTR.x + sBL.x - sTL.x, y: sTR.y + sBL.y - sTL.y };
+            const sn = localSnapCorner(pred.x, pred.y);
+            sBR = sn.ok ? sn : { x: pred.x, y: pred.y, ok: true };
           }
         }
 
-        if (bestQuad) {
-          const refinePt = pt => {
-            let fineBest = -1e9, fx = pt.x, fy = pt.y;
-            for (let y = Math.max(gROut + 1, pt.y - 2); y <= Math.min(h - gROut - 1, pt.y + 2); y++) {
-              for (let x = Math.max(gROut + 1, pt.x - 2); x <= Math.min(w - gROut - 1, pt.x + 2); x++) {
-                const inn = boxMean(x - gRIn, y - gRIn, x + gRIn, y + gRIn);
-                const outA = boxMean(x - gROut, y - gROut, x + gROut, y + gROut);
-                const sc = (outA * gOutArea - inn * gInArea) / (gOutArea - gInArea) - inn;
-                if (sc > fineBest) { fineBest = sc; fx = x; fy = y; }
-              }
-            }
-            return { x: fx, y: fy, ok: true };
-          };
-          tlOut = refinePt(bestQuad.tl);
-          trOut = refinePt(bestQuad.tr);
-          blRough = refinePt(bestQuad.bl);
-          brOut = refinePt(bestQuad.br);
+        // Geometric verification
+        const wt = Math.hypot(sTR.x - sTL.x, sTR.y - sTL.y);
+        const wb = Math.hypot(sBR.x - sBL.x, sBR.y - sBL.y);
+        const hl = Math.hypot(sBL.x - sTL.x, sBL.y - sTL.y);
+        const hr = Math.hypot(sBR.x - sTR.x, sBR.y - sTR.y);
+        const wAvg = (wt + wb) / 2;
+        const hAvg = (hl + hr) / 2;
+        const ar = wAvg > 0 ? hAvg / wAvg : 0;
+
+        const isGeometryValid = (
+          wAvg >= 0.30 * w &&
+          hAvg >= 0.40 * h &&
+          ar >= 1.15 && ar <= 1.85 &&
+          sTR.x > sTL.x + 0.25 * w &&
+          sBL.y > sTL.y + 0.30 * h
+        );
+
+        if (isGeometryValid && [sTL.ok, sTR.ok, sBL.ok, sBR.ok].filter(Boolean).length >= 3) {
+          tlOut = sTL; trOut = sTR; blOut = sBL; brOut = sBR;
         } else {
-          // Fallback to reference coordinates if neither hint nor global quad matched
-          tlOut = findFiducialNear(REF_CORNERS.tl);
-          trOut = findFiducialNear(REF_CORNERS.tr);
-          brOut = findFiducialNear(REF_CORNERS.br);
-          blRough = {
-            x: tlOut.x + (brOut.x - trOut.x),
-            y: brOut.y + (tlOut.y - trOut.y),
-            ok: tlOut.ok && trOut.ok && brOut.ok
-          };
+          // Fallback safely to reference corners without distorting
+          tlOut = { x: refTL.x, y: refTL.y, ok: sTL.ok };
+          trOut = { x: refTR.x, y: refTR.y, ok: sTR.ok };
+          blOut = { x: refBL.x, y: refBL.y, ok: sBL.ok };
+          brOut = { x: refBR.x, y: refBR.y, ok: sBR.ok };
         }
       }
 
-      // Stage 2: Project 4 inner grid timing squares through rough homography and snap each one
-      const REF_GRID_ANCHORS = [
-        { x: 359.9, y: 425.4 }, // Top-left of Mã đề
-        { x: 701.3, y: 419.5 }, // Top-right of Phần I col 2
-        { x: 332.5, y: 1012.0 }, // Bottom-left of Phần III (between C15-C16)
-        { x: 672.0, y: 1011.0 }  // Bottom-right of Phần III (right of C18)
-      ];
-
-      function findFiducialAtImagePt(expX, expY, winX, winY) {
-        const x0 = Math.max(rOut + 1, Math.round(expX - winX));
-        const x1 = Math.min(w - rOut - 1, Math.round(expX + winX));
-        const y0 = Math.max(rOut + 1, Math.round(expY - winY));
-        const y1 = Math.min(h - rOut - 1, Math.round(expY + winY));
-        let bestScore = -1e9, bestX = expX, bestY = expY, bestContrast = 0;
-        for (let y = y0; y <= y1; y += step) {
-          for (let x = x0; x <= x1; x += step) {
-            const inner = boxMean(x - rIn, y - rIn, x + rIn, y + rIn);
-            if (inner > 145) continue;
-            const outerAll = boxMean(x - rOut, y - rOut, x + rOut, y + rOut);
-            const innerArea = (2 * rIn) * (2 * rIn);
-            const outerArea = (2 * rOut) * (2 * rOut);
-            const ringMean = (outerAll * outerArea - inner * innerArea) / (outerArea - innerArea);
-            const contrast = ringMean - inner;
-            if (contrast < 30) continue;
-            const sc = contrast - Math.hypot(x - expX, y - expY) * 0.08;
-            if (sc > bestScore) { bestScore = sc; bestX = x; bestY = y; bestContrast = contrast; }
-          }
-        }
-        if (bestContrast >= 30) {
-          let fineBest = -1e9, fx = bestX, fy = bestY;
-          for (let y = Math.max(rOut + 1, bestY - step); y <= Math.min(h - rOut - 1, bestY + step); y++) {
-            for (let x = Math.max(rOut + 1, bestX - step); x <= Math.min(w - rOut - 1, bestX + step); x++) {
-              const inner = boxMean(x - rIn, y - rIn, x + rIn, y + rIn);
-              const outerAll = boxMean(x - rOut, y - rOut, x + rOut, y + rOut);
-              const innerArea = (2 * rIn) * (2 * rIn);
-              const outerArea = (2 * rOut) * (2 * rOut);
-              const ringMean = (outerAll * outerArea - inner * innerArea) / (outerArea - innerArea);
-              const sc = ringMean - inner;
-              if (sc > fineBest) { fineBest = sc; fx = x; fy = y; }
-            }
-          }
-          return { x: fx, y: fy, ok: true };
-        }
-        return { x: expX, y: expY, ok: false };
-      }
-
-      const H_rough = computeHomographyMatrix(
-        [REF_CORNERS.tl, REF_CORNERS.tr, REF_CORNERS.bl, REF_CORNERS.br],
-        [tlOut, trOut, blRough, brOut]
-      );
-
-      let finalCorners = { tl: tlOut, tr: trOut, bl: blRough, br: brOut };
-      let okCount = [tlOut, trOut, brOut].filter(c => c.ok).length;
-
-      if (H_rough) {
-        const snapWinX = Math.round(0.055 * w);
-        const snapWinY = Math.round(0.055 * h);
-        const snappedGrid = REF_GRID_ANCHORS.map(pt => {
-          const den = H_rough[6] * pt.x + H_rough[7] * pt.y + 1.0;
-          const px = (H_rough[0] * pt.x + H_rough[1] * pt.y + H_rough[2]) / den;
-          const py = (H_rough[3] * pt.x + H_rough[4] * pt.y + H_rough[5]) / den;
-          return findFiducialAtImagePt(px, py, snapWinX, snapWinY);
-        });
-        const gridOk = snappedGrid.filter(c => c.ok).length;
-        if (gridOk === 4) {
-          const H_inner = computeHomographyMatrix(REF_GRID_ANCHORS, snappedGrid);
-          if (H_inner) {
-            const projOuter = pt => {
-              const den = H_inner[6] * pt.x + H_inner[7] * pt.y + 1.0;
-              return {
-                x: (H_inner[0] * pt.x + H_inner[1] * pt.y + H_inner[2]) / den,
-                y: (H_inner[3] * pt.x + H_inner[4] * pt.y + H_inner[5]) / den
-              };
-            };
-            finalCorners = {
-              tl: projOuter(REF_CORNERS.tl),
-              tr: projOuter(REF_CORNERS.tr),
-              bl: projOuter(REF_CORNERS.bl),
-              br: projOuter(REF_CORNERS.br)
-            };
-            okCount = 4;
-          }
-        }
-      }
-
+      const okCount = [tlOut.ok, trOut.ok, blOut.ok, brOut.ok].filter(Boolean).length;
       return {
         corners: {
-          tl: { x: finalCorners.tl.x, y: finalCorners.tl.y },
-          tr: { x: finalCorners.tr.x, y: finalCorners.tr.y },
-          bl: { x: finalCorners.bl.x, y: finalCorners.bl.y },
-          br: { x: finalCorners.br.x, y: finalCorners.br.y }
+          tl: { x: tlOut.x, y: tlOut.y },
+          tr: { x: trOut.x, y: trOut.y },
+          bl: { x: blOut.x, y: blOut.y },
+          br: { x: brOut.x, y: brOut.y }
         },
         okCount
       };
@@ -2873,10 +2734,16 @@
         const sx = w / REF_WIDTH;
         const sy = h / REF_HEIGHT;
         appState.currentScan.scanId = Date.now() + Math.random();
-        appState.currentScan.autoSaved = true;
+        appState.currentScan.autoSaved = false;
         appState.currentScan.studentName = "";
         const nameInp = document.getElementById("inpStudentName");
         if (nameInp) nameInp.value = "";
+        appState.currentScan.studentClass = "";
+        const classInp = document.getElementById("inpStudentClass");
+        if (classInp) classInp.value = "";
+        appState.currentScan.essayScore = 0;
+        const essayInp = document.getElementById("inpEssayScore");
+        if (essayInp) essayInp.value = "0";
         appState.currentScan.manualCode = "AUTO";
         const codeSel = document.getElementById("selExamCodeOverride");
         if (codeSel) codeSel.value = "AUTO";
@@ -2908,14 +2775,18 @@
             okCount = 4;
           }
         }
-        saveCurrentResultToRoster(true);
+        const effectiveCode = getEffectiveExamCode();
+        const canAutoSave = (okCount === 4 && effectiveCode && appState.examKeys[effectiveCode]);
+        if (canAutoSave) {
+          saveCurrentResultToRoster(true);
+        }
         playScanCompleteBeep(okCount);
         setFullScreenCalibrationUI(okCount < 4);
         autoExtractStudentName(false);
         showToast(
           okCount === 4
-            ? `Đã tự lưu (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ) — chuẩn 4/4 góc!`
-            : `Đã chụp & lưu (bắt ${okCount}/4 góc) — kéo nhẹ góc còn lại nếu cần.`
+            ? (canAutoSave ? `Đã tự lưu (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ) — chuẩn 4/4 góc!` : `Đã quét — kiểm tra mã đề trước khi lưu!`)
+            : `Đã chụp (bắt ${okCount}/4 góc) — kéo nhẹ góc còn lại nếu cần.`
         );
       };
       capturedImg.src = tempCanvas.toDataURL("image/jpeg", 0.92);
@@ -2933,12 +2804,18 @@
           const h = img.naturalHeight || img.height;
           const sx = w / REF_WIDTH;
           const sy = h / REF_HEIGHT;
-          // Reset stale student info so previous scan name never leaks onto new photo
+          // Reset stale student info & essay score so previous scan data never leaks
           appState.currentScan.scanId = Date.now() + Math.random();
-          appState.currentScan.autoSaved = true;
+          appState.currentScan.autoSaved = false;
           appState.currentScan.studentName = "";
           const nameInp = document.getElementById("inpStudentName");
           if (nameInp) nameInp.value = "";
+          appState.currentScan.studentClass = "";
+          const classInp = document.getElementById("inpStudentClass");
+          if (classInp) classInp.value = "";
+          appState.currentScan.essayScore = 0;
+          const essayInp = document.getElementById("inpEssayScore");
+          if (essayInp) essayInp.value = "0";
           appState.currentScan.manualCode = "AUTO";
           const codeSel = document.getElementById("selExamCodeOverride");
           if (codeSel) codeSel.value = "AUTO";
@@ -2950,14 +2827,18 @@
             br: { x: REF_CORNERS.br.x * sx, y: REF_CORNERS.br.y * sy }
           };
           const okCount = autoDetectFiducialCorners(true);
-          saveCurrentResultToRoster(true);
+          const effectiveCode = getEffectiveExamCode();
+          const canAutoSave = (okCount === 4 && effectiveCode && appState.examKeys[effectiveCode]);
+          if (canAutoSave) {
+            saveCurrentResultToRoster(true);
+          }
           playScanCompleteBeep(okCount);
           setFullScreenCalibrationUI(okCount < 4);
           autoExtractStudentName(false);
           showToast(
             okCount === 4
-              ? `Đã nạp & tự lưu "${file.name}" (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ)!`
-              : `Đã nạp & lưu "${file.name}" (bắt ${okCount}/4 góc) — kiểm tra/kéo 4 góc nếu cần!`
+              ? (canAutoSave ? `Đã nạp & tự lưu "${file.name}" (${appState.currentScan.scores.totalTN.toFixed(2)}/7.0đ)!` : `Đã nạp "${file.name}" — vui lòng kiểm tra mã đề!`)
+              : `Đã nạp "${file.name}" (bắt ${okCount}/4 góc) — kiểm tra/kéo 4 góc trước khi lưu!`
           );
         };
         img.src = e.target.result;
@@ -2971,10 +2852,15 @@
       const imgEl = document.getElementById(mode === "graded" ? "sampleGradedImg" : "sampleRawImg");
       if (!imgEl) return;
       currentSourceImage = imgEl;
+      appState.currentScan.scanId = "SAMPLE_" + Date.now();
+      appState.currentScan.autoSaved = false;
       document.getElementById("inpStudentName").value = "Đào Duy Khánh";
       document.getElementById("inpStudentClass").value = "12B1";
       appState.currentScan.studentName = "Đào Duy Khánh";
       appState.currentScan.studentClass = "12B1";
+      appState.currentScan.essayScore = 0;
+      const essayInp = document.getElementById("inpEssayScore");
+      if (essayInp) essayInp.value = "0";
       appState.currentScan.manualCode = "AUTO";
       document.getElementById("selExamCodeOverride").value = "AUTO";
       resetCornerCalibration();
@@ -3139,7 +3025,7 @@
 
     function saveActiveExamKey() {
       try {
-        localStorage.setItem("smartomr_exam_keys_v19", JSON.stringify(appState.examKeys));
+        localStorage.setItem("smartomr_exam_keys_ghk1_v22", JSON.stringify(appState.examKeys));
       } catch (e) {}
       recalculateScoresFromState();
       broadcastSyncKeys();
@@ -3152,6 +3038,11 @@
     function saveCurrentResultToRoster(silent = false) {
       const scan = appState.currentScan;
       const code = getEffectiveExamCode();
+      // Guard: do not auto-save if exam code is missing or not in answer keys
+      if (!code || code === "Chưa tô" || !appState.examKeys[code]) {
+        if (!silent) showToast(`⚠️ Chưa thể lưu: Mã đề "${code}" không hợp lệ hoặc chưa khớp bộ đáp án!`);
+        return;
+      }
       const scanId = scan.scanId || (Date.now() + Math.random());
       scan.scanId = scanId;
       scan.autoSaved = true;
@@ -3202,6 +3093,16 @@
       document.getElementById("rosterCountBadge").textContent = String(appState.roster.length);
     }
 
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     function renderRosterTable() {
       const filterQ = (document.getElementById("inpFilterRoster")?.value || "").toLowerCase().trim();
       const filtered = appState.roster.filter(r =>
@@ -3231,15 +3132,15 @@
         tbody.innerHTML = filtered.map((r, idx) => `
           <tr class="hover:bg-slate-800/40 transition">
             <td class="py-2.5 px-3 font-mono-code text-slate-400">${idx + 1}</td>
-            <td class="py-2.5 px-3 font-semibold text-white">${r.name}</td>
-            <td class="py-2.5 px-3 text-slate-300">${r.className}</td>
-            <td class="py-2.5 px-3 font-mono-code text-amber-300 font-semibold">${r.examCode}</td>
+            <td class="py-2.5 px-3 font-semibold text-white">${escapeHtml(r.name)}</td>
+            <td class="py-2.5 px-3 text-slate-300">${escapeHtml(r.className)}</td>
+            <td class="py-2.5 px-3 font-mono-code text-amber-300 font-semibold">${escapeHtml(r.examCode)}</td>
             <td class="py-2.5 px-3 font-mono-code text-slate-200">${r.p1.toFixed(2)} / ${r.p2.toFixed(2)} / ${r.p3.toFixed(2)}</td>
             <td class="py-2.5 px-3 font-mono-code font-bold text-emerald-400">${r.totalTN.toFixed(2)}</td>
             <td class="py-2.5 px-3 font-mono-code font-bold text-sky-400">${r.grandTotal.toFixed(2)}</td>
-            <td class="py-2.5 px-3 text-[11px] text-slate-300 max-w-md">${r.mistakes}</td>
+            <td class="py-2.5 px-3 text-[11px] text-slate-300 max-w-md">${escapeHtml(r.mistakes)}</td>
             <td class="py-2.5 px-3 text-right">
-              <button onclick="deleteRosterItem(${ idx })" class="px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-[11px]">Xóa</button>
+              <button onclick="deleteRosterItem('${escapeHtml(String(r.id))}')" class="px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-[11px]">Xóa</button>
             </td>
           </tr>
         `).join("");
@@ -3248,13 +3149,19 @@
       updateRosterChart();
     }
 
-    function deleteRosterItem(index) {
-      appState.roster.splice(index, 1);
+    function deleteRosterItem(id) {
+      const item = appState.roster.find(r => String(r.id) === String(id));
+      const studentName = item ? item.name : "học sinh này";
+      if (!confirm(`Bạn có chắc chắn muốn xóa bài của "${studentName}" khỏi Bảng điểm?`)) return;
+      appState.roster = appState.roster.filter(r => String(r.id) !== String(id));
       persistRoster();
       renderRosterTable();
+      showToast(`Đã xóa bài của "${studentName}".`);
     }
 
     function clearAllRoster() {
+      if (appState.roster.length === 0) return;
+      if (!confirm(`Bạn có chắc chắn muốn xóa toàn bộ ${appState.roster.length} bài trong Bảng điểm? Thao tác này không thể hoàn tác!`)) return;
       appState.roster = [];
       persistRoster();
       renderRosterTable();
@@ -3508,12 +3415,26 @@
     let _syncMode = null; // "host" | "client"
     let _isApplyingRemoteSync = false;
 
+    function generateSecureRoomToken() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let token = "";
+      const cryptoObj = window.crypto || window.msCrypto;
+      if (cryptoObj && cryptoObj.getRandomValues) {
+        const bytes = new Uint8Array(6);
+        cryptoObj.getRandomValues(bytes);
+        for (let i = 0; i < 6; i++) token += chars[bytes[i] % chars.length];
+      } else {
+        for (let i = 0; i < 6; i++) token += chars[Math.floor(Math.random() * chars.length)];
+      }
+      return token;
+    }
+
     function getSavedRoomCode() {
       let code = "";
-      try { code = localStorage.getItem("smartomr_room_code") || ""; } catch (e) {}
-      if (!/^\d{4}$/.test(code)) {
-        code = String(Math.floor(1000 + Math.random() * 9000));
-        try { localStorage.setItem("smartomr_room_code", code); } catch (e) {}
+      try { code = localStorage.getItem("smartomr_room_code_v22") || ""; } catch (e) {}
+      if (!/^[A-Za-z0-9]{5,8}$/.test(code)) {
+        code = generateSecureRoomToken();
+        try { localStorage.setItem("smartomr_room_code_v22", code); } catch (e) {}
       }
       return code;
     }
@@ -3569,7 +3490,7 @@
             const imgData = ctx.getImageData(0, 0, w, h);
             const qr = jsQR(imgData.data, w, h, { inversionAttempts: "dontInvert" });
             if (qr && qr.data) {
-              const m = qr.data.match(/[?&]room=(\d{4})/) || qr.data.match(/^(\d{4})$/);
+              const m = qr.data.match(/[?&]room=([A-Za-z0-9]{4,10})/) || qr.data.match(/^([A-Za-z0-9]{4,10})$/);
               if (m) {
                 stopQrRoomScanner();
                 playScanCompleteBeep(4);
@@ -3613,8 +3534,8 @@
     }
 
     function regenerateHostRoom() {
-      const code = String(Math.floor(1000 + Math.random() * 9000));
-      try { localStorage.setItem("smartomr_room_code", code); } catch (e) {}
+      const code = generateSecureRoomToken();
+      try { localStorage.setItem("smartomr_room_code_v22", code); } catch (e) {}
       startDesktopHost(code, false);
       openSyncModal();
     }
@@ -3646,11 +3567,10 @@
           updateSyncPill("connected", `Đã nối ${_syncConns.length} ĐT`);
           if (hostBadge) hostBadge.textContent = `Đã kết nối ${_syncConns.length} ĐT`;
           showToast("Điện thoại đã kết nối real-time với Máy tính!");
-          // Push current exam keys, class roster, Gemini API Key & Model to phone
+          // Push current exam keys & class roster (Desktop handles Gemini Vision locally, no API key leak)
           const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
-          const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
           const geminiModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || "gemini-3.8-flash").trim();
-          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText, geminiApiKey, geminiModel });
+          conn.send({ type: "SYNC_KEYS", examKeys: appState.examKeys, classListText, geminiApiKey: "", geminiModel });
         });
         conn.on("data", data => handleIncomingSyncMessage(data, conn));
         conn.on("close", () => {
@@ -3682,9 +3602,9 @@
         return;
       }
       const inp = document.getElementById("inpJoinRoomCode");
-      const code = (forcedCode || inp?.value || "").trim();
-      if (!/^\d{4}$/.test(code)) {
-        showToast("Vui lòng nhập đúng mã phòng 4 chữ số trên máy tính!", true);
+      const code = (forcedCode || inp?.value || "").trim().toUpperCase();
+      if (!/^[A-Za-z0-9]{4,10}$/.test(code)) {
+        showToast("Vui lòng nhập đúng mã phòng kết nối hiển thị trên máy tính!", true);
         return;
       }
       if (inp) inp.value = code;
@@ -3754,6 +3674,7 @@
           manualCode: scan.manualCode,
           detectedCode: scan.detectedCode,
           p1Answers: scan.p1Answers,
+          p1Multi: scan.p1Multi,
           p2Answers: scan.p2Answers,
           p3Answers: scan.p3Answers,
           essayScore: scan.essayScore
@@ -3766,14 +3687,13 @@
     function broadcastSyncKeys() {
       if (_syncMode === "host") {
         const classListText = document.getElementById("txtClassRosterList")?.value || localStorage.getItem("smartomr_class_list_v19") || "";
-        const geminiApiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
         const geminiModel = (document.getElementById("inpGeminiModel")?.value || localStorage.getItem("smartomr_gemini_model") || "gemini-3.8-flash").trim();
         _syncConns.forEach(c => {
           if (c.open) c.send({
             type: "SYNC_KEYS",
             examKeys: appState.examKeys,
             classListText,
-            geminiApiKey,
+            geminiApiKey: "",
             geminiModel
           });
         });
@@ -3880,7 +3800,7 @@
       if (!msg || !msg.type) return;
       if (msg.type === "SYNC_KEYS" && msg.examKeys) {
         appState.examKeys = { ...DEFAULT_EXAM_KEYS, ...msg.examKeys };
-        try { localStorage.setItem("smartomr_exam_keys_v19", JSON.stringify(appState.examKeys)); } catch (e) {}
+        try { localStorage.setItem("smartomr_exam_keys_ghk1_v22", JSON.stringify(appState.examKeys)); } catch (e) {}
         if (typeof msg.classListText === "string" && msg.classListText.trim()) {
           const txt = document.getElementById("txtClassRosterList");
           if (txt) txt.value = msg.classListText;
@@ -3933,9 +3853,12 @@
             appState.currentScan.manualCode = s.manualCode || msg.entry.examCode;
             appState.currentScan.detectedCode = s.detectedCode || msg.entry.examCode;
             appState.currentScan.p1Answers = s.p1Answers || appState.currentScan.p1Answers;
+            appState.currentScan.p1Multi = Array.from({ length: 12 }, (_, i) => !!s.p1Multi?.[i]);
             appState.currentScan.p2Answers = s.p2Answers || appState.currentScan.p2Answers;
             appState.currentScan.p3Answers = s.p3Answers || appState.currentScan.p3Answers;
-            appState.currentScan.essayScore = s.essayScore || 0;
+            appState.currentScan.essayScore = Math.min(3, Math.max(0, Number(s.essayScore ?? msg.entry.essay) || 0));
+            const essayInp = document.getElementById("inpEssayScore");
+            if (essayInp) essayInp.value = String(appState.currentScan.essayScore);
             const nInp = document.getElementById("inpStudentName"); if (nInp) nInp.value = msg.entry.name;
             const cInp = document.getElementById("inpStudentClass"); if (cInp) cInp.value = msg.entry.className;
             recalculateScoresFromState();
@@ -3958,7 +3881,11 @@
 
           // If entry doesn't have an accurate student name yet, run Desktop Gemini Vision
           const desktopGeminiKey = (document.getElementById("inpGeminiApiKey")?.value || localStorage.getItem("smartomr_gemini_key") || "").trim();
-          const needsNameResolution = !msg.entry.name || msg.entry.name === "Chưa nhập tên" || msg.entry.name.startsWith("Thí sinh");
+          const needsNameResolution = !msg.entry.name ||
+            msg.entry.name === "Chưa nhập tên" ||
+            msg.entry.name.startsWith("Thí sinh") ||
+            msg.entry.name.startsWith("Phiếu #") ||
+            msg.entry.name.startsWith("Phiếu ");
           if (desktopGeminiKey && msg.cropNameDataUrl && needsNameResolution) {
             processDesktopGeminiVision(msg.entry.id, msg.cropNameDataUrl, conn);
           }
@@ -4178,6 +4105,8 @@
     }
 
     async function autoExtractStudentName(manualRetry = false) {
+      const sourceScanId = appState.currentScan.scanId;
+      const isCurrentScan = () => appState.currentScan.scanId === sourceScanId;
       const wrap = document.getElementById("nameCropPreviewWrap");
       const imgEl = document.getElementById("nameCropPreviewImg");
       const statusEl = document.getElementById("nameOcrStatus");
@@ -4189,6 +4118,7 @@
 
       let geminiKey = (appState.geminiApiKey || localStorage.getItem("smartomr_gemini_key") || "").trim();
       const applyDetectedName = (rawName, rawClass, sourceLabel) => {
+        if (!isCurrentScan()) return;
         const matched = fuzzyMatchStudentName(rawName);
         const finalName = matched ? matched.name : (rawName || "").trim();
         if (finalName) {
@@ -4225,6 +4155,8 @@
         }
       }
 
+      if (!isCurrentScan()) return;
+
       // 2. Delegate to connected Desktop Host if phone has no key
       if (_syncMode === "client" && _syncClientConn && _syncClientConn.open) {
         if (statusEl) statusEl.textContent = "⏳ Đang nhờ Máy tính dùng Gemini Vision đọc tên...";
@@ -4240,7 +4172,9 @@
       if (statusEl) statusEl.textContent = "⏳ Đang đọc tên (OCR offline)...";
       try {
         const T = await ensureTesseractLoaded();
+        if (!isCurrentScan()) return;
         const result = await T.recognize(cropUrl, "vie");
+        if (!isCurrentScan()) return;
         const rawTxt = (result?.data?.text || "")
           .replace(/Họ và tên thí sinh|Họ và tên|thí sinh|Hội đồng thi|Kỳ thi|Ngày thi|Phòng thi|Số báo danh|VÙNG CHẤM TRẮC NGHIỆM|Lớp/gi, " ")
           .replace(/[0-9.:;_\-|/\\]/g, " ")
@@ -4255,7 +4189,7 @@
           applyDetectedName(clean, "", "OCR offline");
         }
       } catch (e) {
-        if (statusEl) statusEl.textContent = "Nhìn ảnh trên để gõ hoặc bấm 🎤 đọc tên!";
+        if (isCurrentScan() && statusEl) statusEl.textContent = "Nhìn ảnh trên để gõ hoặc bấm 🎤 đọc tên!";
       }
     }
 
@@ -4294,7 +4228,7 @@
     window.addEventListener("load", () => {
       // Restore saved keys if any
       try {
-        const savedKeys = localStorage.getItem("smartomr_exam_keys_v19");
+        const savedKeys = localStorage.getItem("smartomr_exam_keys_ghk1_v22");
         if (savedKeys) {
           const parsed = JSON.parse(savedKeys);
           appState.examKeys = { ...DEFAULT_EXAM_KEYS, ...parsed };
@@ -4314,23 +4248,9 @@
         }
       } catch (e) {}
 
-      // Seed initial roster only on first launch
+      // Initial roster starts completely clean for teachers
       if (!restoredRoster) {
-        appState.roster = [
-          {
-            id: 1,
-            name: "Đào Duy Khánh",
-            className: "12B1",
-            examCode: "104",
-            p1: 2.50,
-            p2: 1.10,
-            p3: 2.00,
-            essay: 0.00,
-            totalTN: 5.60,
-            grandTotal: 5.60,
-            mistakes: "P1: C3 (D→B), C12 (A→D) | P2: C13b (S→Đ), C13c (Đ→S), C13d (Đ→S) | P3: Đúng 4/4"
-          }
-        ];
+        appState.roster = [];
       }
 
       initCanvasDragEvents();

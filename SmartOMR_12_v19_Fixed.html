@@ -203,22 +203,29 @@
       <div class="lg:col-span-7 flex flex-col gap-2 lg:gap-3">
 
         <!-- Action Toolbar (Minimalist 1-row) -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex items-center gap-2">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-2 flex items-center gap-1.5 sm:gap-2">
           <!-- Live Camera Button -->
-          <button id="btnToggleCamera" onclick="toggleLiveCamera()" class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-900/40 transition whitespace-nowrap">
+          <button id="btnToggleCamera" onclick="toggleLiveCamera()" class="flex-1 flex items-center justify-center gap-1 px-2 sm:px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-emerald-900/40 transition whitespace-nowrap" title="Bật Camera quét trực tiếp trên màn hình">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
             <span id="cameraBtnText">Mở Camera</span>
           </button>
 
-          <!-- Upload / Capture Photo Input -->
-          <label for="fileUploadInput" class="flex-1 cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-900/40 transition whitespace-nowrap">
-            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-            <span>Chụp / Chọn Ảnh</span>
+          <!-- Choose Existing Photo from Gallery / Files (NO capture -> opens Photo Library / Files) -->
+          <label for="fileUploadInput" class="flex-1 cursor-pointer flex items-center justify-center gap-1 px-2 sm:px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-900/40 transition whitespace-nowrap" title="Chọn ảnh có sẵn từ Thư viện / Album / Tệp của điện thoại">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span>Chọn Ảnh</span>
           </label>
-          <input id="fileUploadInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileUpload(event)" />
+          <input id="fileUploadInput" type="file" accept="image/*" class="hidden" onchange="handleFileUpload(event)" />
+
+          <!-- Native Camera Snap Button (opens Native Camera hardware) -->
+          <label for="nativeCameraInput" class="flex-1 cursor-pointer flex items-center justify-center gap-1 px-2 sm:px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-indigo-900/40 transition whitespace-nowrap" title="Chụp ảnh mới bằng ứng dụng Máy ảnh gốc của điện thoại">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>Chụp Ảnh</span>
+          </label>
+          <input id="nativeCameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileUpload(event)" />
 
           <!-- Corner Calibration Toggle (includes Auto-Snap inside HUD) -->
-          <button id="btnToggleCalibration" onclick="toggleCalibrationMode()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1 transition whitespace-nowrap" title="Chỉnh 4 góc &amp; Tự khớp khung">
+          <button id="btnToggleCalibration" onclick="toggleCalibrationMode()" class="px-2.5 sm:px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1 transition whitespace-nowrap" title="Chỉnh 4 góc &amp; Tự khớp khung">
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
             <span id="calibBtnLabel">4 Góc</span>
           </button>
@@ -701,7 +708,7 @@
           <h2 class="text-base font-bold text-white">Hướng Dẫn Chấm Nhanh Qua Camera Điện Thoại</h2>
           <ol class="text-xs text-slate-300 space-y-2.5 list-decimal list-inside leading-relaxed">
             <li><strong>Bước 1 — Chọn hoặc kiểm tra Đáp Án Mã Đề:</strong> Vào tab <em>Mã Đề</em> để kiểm tra đáp án chuẩn (đã nạp sẵn mã đề <code class="text-amber-300">104</code>, <code class="text-amber-300">101</code>, <code class="text-amber-300">102</code>, <code class="text-amber-300">103</code>).</li>
-            <li><strong>Bước 2 — Mở Camera hoặc Chụp ảnh:</strong> Bấm <strong>"Mở Camera Điện Thoại"</strong> để bật khung ngắm trực tiếp, hoặc bấm <strong>"Chụp / Chọn Ảnh Phiếu"</strong> để dùng ứng dụng Camera gốc của điện thoại (cho độ nét cao nhất và chống rung phần cứng).</li>
+            <li><strong>Bước 2 — Mở Camera hoặc Chọn/Chụp ảnh:</strong> Bấm <strong>"Mở Camera"</strong> để bật khung ngắm trực tiếp, bấm <strong>"Chọn Ảnh"</strong> để lấy ảnh có sẵn từ Thư viện/Album, hoặc bấm <strong>"Chụp Ảnh"</strong> để dùng ứng dụng Camera gốc của điện thoại.</li>
             <li><strong>Bước 3 — Khớp 4 Ô Vuông Đen Góc:</strong> Đặt phiếu trên mặt bàn phẳng, đưa 4 ô vuông đen ở 4 góc của <em>VÙNG CHẤM TRẮC NGHIỆM</em> vào đúng 4 góc khung ngắm. Nếu ảnh chụp bị nghiêng, bật <strong>"Chỉnh 4 Góc"</strong> để kéo 4 nút tròn xanh vào đúng 4 ô vuông đen trên giấy.</li>
             <li><strong>Bước 4 — Kiểm tra &amp; Lưu Bảng Điểm:</strong> Ứng dụng tự động khoanh tròn đáp án chuẩn (màu đỏ), tô xanh câu đúng, cảnh báo câu sai và tính điểm từng phần (Phần I, Phần II, Phần III). Bấm <strong>"Lưu Vào Bảng Điểm Lớp"</strong> để cộng dồn danh sách và xuất ra Excel (.CSV).</li>
           </ol>
@@ -2516,7 +2523,7 @@
         startLiveCornerLoop();
         showToast("Đã mở Camera! Đưa 4 góc vào khung, máy sẽ tự khóa & chụp.");
       } catch (err) {
-        showToast("Trình duyệt đang chặn quyền Camera trực tiếp. Hãy bấm nút 'Chụp / Chọn Ảnh' bên cạnh để mở Camera điện thoại!", true);
+        showToast("Trình duyệt đang chặn quyền Camera trực tiếp. Hãy bấm nút 'Chọn Ảnh' hoặc 'Chụp Ảnh' bên cạnh để mở từ điện thoại!", true);
       }
     }
 
@@ -2956,6 +2963,8 @@
         img.src = e.target.result;
       };
       reader.readAsDataURL(file);
+      // Reset input value so re-selecting the same file reliably triggers onchange
+      try { event.target.value = ""; } catch (e) {}
     }
 
     function loadSampleSheet(mode) {

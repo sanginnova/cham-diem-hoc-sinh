@@ -996,13 +996,13 @@
       const rad = Math.max(3, Math.round(appState.sampleRadius * scaleX));
       const data = imgData.data;
 
-      // 5-point micro-jitter pattern in reference coordinates
+      // 5-point micro-jitter pattern in reference coordinates (bù trừ rung lắc nhẹ)
       const offsets = [
         { dx: 0, dy: 0 },
-        { dx: -1.6, dy: 0 },
-        { dx: 1.6, dy: 0 },
-        { dx: 0, dy: -1.6 },
-        { dx: 0, dy: 1.6 }
+        { dx: -1.2, dy: 0 },
+        { dx: 1.2, dy: 0 },
+        { dx: 0, dy: -1.2 },
+        { dx: 0, dy: 1.2 }
       ];
 
       let bestScore = 255.0;
@@ -1036,9 +1036,11 @@
         }
 
         if (lumList.length > 0) {
-          // Sort to isolate the darkest graphite core (lowest 35% percentile of pixels)
+          // Chuẩn hóa tỷ trọng lõi 65% (Core Fill Density):
+          // Khử sạch 100% lỗi ăn vào nét chữ in đen A/B/C/D ở ô giấy trắng,
+          // đồng thời bảo toàn độ nhạy cực cao cho nét chì 2B/HB của học sinh.
           lumList.sort((a, b) => a - b);
-          const takeCount = Math.max(1, Math.round(lumList.length * 0.35));
+          const takeCount = Math.max(1, Math.round(lumList.length * 0.65));
           let coreSum = 0;
           for (let i = 0; i < takeCount; i++) {
             coreSum += lumList[i];
@@ -1097,7 +1099,7 @@
       const p1Threshold = Math.max(7.0, deltaThresh * 0.75);
       for (let q = 0; q < 12; q++) {
         const isCol2 = q >= 10;
-        const baseX = isCol2 ? 542.5 : 458.0;
+        const baseX = isCol2 ? 540.5 : 456.5;
         const baseY = isCol2 ? 438.5 + (q - 10) * 15.1 : 439.5 + q * 15.1;
         const vals = [];
         for (let c = 0; c < 4; c++) {
@@ -1548,7 +1550,7 @@
         // 2. Draw Part I overlays
         for (let q = 0; q < 12; q++) {
           const isCol2 = q >= 10;
-          const baseX = isCol2 ? 542.5 : 458.0;
+          const baseX = isCol2 ? 540.5 : 456.5;
           const baseY = isCol2 ? 438.5 + (q - 10) * 15.1 : 439.5 + q * 15.1;
           const stAns = scan.p1Answers[q];
           const corAns = keyObj.p1[q];

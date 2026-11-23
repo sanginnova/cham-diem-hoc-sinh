@@ -11,18 +11,28 @@ python sync_drive.py
 echo.
 echo [2/5] Đang chấm điểm và kết xuất Báo cáo Excel vào 03_KET_QUA_EXCEL...
 python cham_diem_core.py
+python export_excel_12b4.py
 python export_excel_12b6.py
+python export_excel_10a17.py
 
 echo.
 echo [3/5] Đang xuất bản bộ ảnh chấm bút đỏ vào 02_ANH_DA_CHAM...
 python tao_bo_anh_da_cham.py
+python tao_anh_da_cham_12b4.py
 python tao_anh_da_cham_12b6.py
+python tao_anh_da_cham_10a17.py
 
 echo.
 echo [4/5] Đang chạy Kiểm Toán Kép 2 Vòng Độc Lập (Double-Check Gate)...
 python double_check_cham_diem.py Lop_12B1 43
 if errorlevel 1 (
     echo [CHẶN BÀN GIAO] Kiểm toán Lop_12B1 thất bại! Vui lòng kiểm tra lỗi ở trên.
+    pause
+    exit /b 1
+)
+python double_check_cham_diem.py Lop_12B4 36
+if errorlevel 1 (
+    echo [CHẶN BÀN GIAO] Kiểm toán Lop_12B4 thất bại! Vui lòng kiểm tra lỗi ở trên.
     pause
     exit /b 1
 )

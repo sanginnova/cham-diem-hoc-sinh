@@ -1,64 +1,111 @@
 # HỆ THỐNG SUB-AGENT CHẤM ĐIỂM BÀI THI TOÁN HỌC (THPT, CĐN01)
 > **Chủ nhiệm hệ thống**: ThS. Nguyễn Văn Sang - Khoa Cơ bản - Trường Cao đẳng Nghề số 1 - BQP  
-> **Sub-agent**: `cham-diem-hoc-sinh` (Gemini Multimodal Vision & Visual Red-Pen Logic)  
-> **Tiêu chuẩn khảo thí**: Chương trình Giáo dục phổ thông (GDPT) 2018 - Cấu trúc đề 4 phần (Thang điểm 10)
+> **Sub-agent**: `cham-diem-hoc-sinh` (Gemini Multimodal Vision & Bilinear 4-Corner Optical OMR)  
+> **Tiêu chuẩn khảo thí**: Chương trình GDPT 2018 — Cấu trúc đề 4 phần (Thang điểm 10)
 
 ---
 
-## 🌟 TỔNG QUAN
+## 🌟 TỔNG QUAN & CÔNG CỤ ĐÍNH KÈM
 
-Hệ thống cung cấp giải pháp khép kín 100% tự động hóa chấm điểm bài thi Toán học từ ảnh chụp bài làm học sinh lưu trữ trên Google Drive:
-1. **Tự động đồng bộ**: Tải và quản lý ảnh bài làm trực tiếp từ Google Drive (`sync_drive.py`).
-2. **Mắt thần Gemini Vision**: Nhận diện thông tin học sinh, lớp, mã đề thi (101, 102, 103, 104), phân biệt chính xác vết chì tô thật và vết chì tẩy xóa mờ.
-3. **Chấm trắc nghiệm Dead-Center (≤ 2px)**:
-   - **Phần I (3,0đ)**: 12 câu ABCD - Khoanh tròn đỏ ôm khít tâm ô chì học sinh tô.
-   - **Phần II (2,0đ)**: 2 câu Đúng/Sai (8 ý) theo barem phân bước chuẩn Bộ: 1 ý = 0,1đ; 2 ý = 0,25đ; 3 ý = 0,5đ; 4 ý = 1,0đ.
-   - **Phần III (2,0đ)**: 4 câu Trả lời ngắn - Soi đối chiếu cả ô số viết tay và các cột OMR.
-4. **Chấm tự luận Logic 4 bước (Phần IV - 3,0đ)**:
-   - **Không chỉ nhìn đáp án**: Soi từng dòng biến đổi toán học, điều kiện xác định, quy tắc đạo hàm và lập luận cực trị.
-   - **Phát hiện lỗi logic đại số & ngụy biện**: Chỉ rõ vị trí sai (`0,00đ [✗]`), đóng dấu điểm từng bước (`+0,25đ [✓]`) dóng thẳng hàng ở lề phải bài làm.
-5. **Typography Tiếng Việt Có Dấu 100%**: Sử dụng Engine TrueType Arial Bold sắc nét, chuẩn mực Sư phạm.
-6. **Báo cáo Excel Đa Tầng**: Tự động xuất file `Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12.xlsx` gồm 4 sheet chi tiết kèm Sheet tô màu đối soát từng câu.
+Hệ thống cung cấp giải pháp khép kín từ đồng bộ ảnh bài thi Google Drive, nhận diện kép (**Gemini Vision + Optical Bilinear 4 góc**), chấm bút đỏ sư phạm trực quan, kiểm toán 2 vòng bắt buộc, đến xuất bản báo cáo Excel:
+
+| Công cụ / Script đính kèm | Chức năng chính |
+| :--- | :--- |
+| **`CHAY_CHAM_DIEM.bat`** | Script chạy trọn gói 1-click trên Windows (Đồng bộ -> Xuất Excel -> Vẽ ảnh bút đỏ -> Double Check -> Dọn rác) |
+| **`sync_drive.py`** | Tải và đồng bộ ảnh bài làm từ thư mục Google Drive |
+| **`cham_diem_core.py`** | Engine chấm điểm & xuất Excel tổng hợp Lớp 12 (`Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12.xlsx`) |
+| **`export_excel_12b6.py`** / **`12b4.py`** / **`10a17.py`** | Xuất báo cáo Excel chi tiết từng lớp kèm Sheet `Đối Chiếu` & `Ảnh Cần Xác Nhận` |
+| **`tao_anh_da_cham_12b6.py`** / **`12b4.py`** / **`10a17.py`** / **`tao_bo_anh_da_cham.py`** | Engine vẽ vòng tròn xanh/cam/đỏ Bilinear 4 góc (OMR) + khung barem phân bước 0,25đ (Tự luận) |
+| **`double_check_cham_diem.py`** | Hệ thống Kiểm Toán Kép 2 Vòng độc lập (`Vòng 1`: Sĩ số, đáp án, kho ảnh; `Vòng 2`: Pixel phân vùng OMR & Tự luận) |
+| **`soat_chep_bai_tu_luan.py`** | Công cụ rà soát phát hiện bài tự luận có dấu hiệu chép nhau / trùng lập luận |
+| **`don_dep_he_thong.py`** | Tự động dọn sạch file rác/cache (`__pycache__`, lock Excel, ảnh crop tạm) |
 
 ---
 
-## 📂 CẤU TRÚC REPOSITORY
+## ⚙️ HƯỚNG DẪN CÀI ĐẶT
+
+### 1. Yêu cầu môi trường
+- **Python**: `3.10+` (khuyến nghị `3.12`)
+- **Git**: Đã cài đặt `git` trên máy
+- **Font hệ thống (Windows)**: `C:\Windows\Fonts\arial.ttf` và `arialbd.ttf` (mặc định có sẵn trên Windows để hiển thị tiếng Việt có dấu trên ảnh chấm đỏ)
+
+### 2. Cài đặt nhanh từ GitHub
+```bash
+# 1. Clone repository về máy
+git clone https://github.com/sanginnova/cham-diem-hoc-sinh.git
+cd cham-diem-hoc-sinh
+
+# 2. (Khuyến nghị) Tạo môi trường ảo Python
+python -m venv .venv
+# Windows PowerShell / CMD:
+.venv\Scripts\activate
+
+# 3. Cài đặt toàn bộ thư viện & công cụ đính kèm
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+*(Hoặc cài nhanh thủ công từng gói: `pip install opencv-python numpy pillow openpyxl gdown python-docx`)*
+
+### 3. Cài đặt Skill cho Antigravity / AI Agent (Tùy chọn)
+Sao chép file skill `SKILL.md` vào thư mục `.agents/skills/cham-diem-hoc-sinh/` trong workspace để kích hoạt lệnh `/cham-diem-hoc-sinh`.
+
+---
+
+## 📂 CẤU TRÚC THƯ MỤC CHUẨN
 
 ```text
-├── SKILL.md                      # Định nghĩa Sub-agent chuẩn Antigravity
-├── cham_diem_core.py             # Engine chấm điểm, đối soát đáp án và xuất Excel 4 Sheet
-├── tao_bo_anh_da_cham.py         # Engine xuất bộ ảnh đã chấm đỏ (Typography có dấu & Logic)
-├── sync_drive.py                 # Module đồng bộ ảnh bài làm từ Google Drive
-├── CHAY_CHAM_DIEM.bat            # Script chạy tự động 1-click dành cho Giáo viên
-├── Ket_Qua_Cham_Diem_...xlsx     # File báo cáo kết quả chi tiết
-└── docs/
-    └── samples/                  # Ảnh mẫu bài làm đã chấm đỏ trực quan
+Cham_Diem_Hoc_Sinh/
+├── 00_DE_VA_DAP_AN/
+│   ├── Khoi_10_GHK1_2026_2027/     # Bộ đề & đáp án Toán 10 (101-104, 201-204)
+│   └── Khoi_12_GHK1_2026_2027/     # Bộ đề & đáp án Toán 12 (101-104, 201-204)
+├── 01_ANH_CHUA_CHAM/               # Ảnh gốc tải từ Google Drive (ignored trên Git)
+├── 02_ANH_DA_CHAM/                 # Ảnh bài làm đã chấm bút đỏ (ignored trên Git)
+├── 03_KET_QUA_EXCEL/               # Bảng điểm & đối chiếu chi tiết (.xlsx)
+├── data_12b1.py / data_12b4.py / data_12b6.py / data_10a17.py
+├── requirements.txt                # Danh sách thư viện Python cần thiết
+├── CHAY_CHAM_DIEM.bat              # Chạy 1-click trên Windows
+└── docs/samples/                   # Ảnh mẫu bài làm đã chấm đỏ trực quan
 ```
 
 ---
 
 ## 🚀 HƯỚNG DẪN SỬ DỤNG
 
-### 1. Chạy 1-Click tự động
-Giáo viên chỉ cần nhấp đúp vào:
+### 1. Chạy 1-Click tự động (Windows)
+Nhấp đúp trực tiếp vào:
 ```cmd
 CHAY_CHAM_DIEM.bat
 ```
 
-### 2. Chạy qua Command Line
+### 2. Chạy từng công cụ qua Command Line
 ```bash
-# 1. Đồng bộ ảnh bài làm từ Google Drive
-python sync_drive.py
+# 1. Đồng bộ ảnh bài làm từ Google Drive (thay link thư mục Drive tương ứng)
+python sync_drive.py "https://drive.google.com/drive/folders/<FOLDER_ID>"
 
-# 2. Chấm điểm và xuất báo cáo Excel
-python cham_diem_core.py
+# 2. Xuất báo cáo Excel theo từng lớp
+python cham_diem_core.py          # Lớp 12B1 + file tổng hợp Khối 12
+python export_excel_12b4.py       # Lớp 12B4
+python export_excel_12b6.py       # Lớp 12B6
+python export_excel_10a17.py      # Lớp 10A17
 
-# 3. Xuất toàn bộ ảnh bài làm đã chấm đỏ sư phạm
-python tao_bo_anh_da_cham.py
+# 3. Xuất bộ ảnh bài làm đã chấm bút đỏ
+python tao_bo_anh_da_cham.py      # Lớp 12B1
+python tao_anh_da_cham_12b4.py    # Lớp 12B4
+python tao_anh_da_cham_12b6.py    # Lớp 12B6
+python tao_anh_da_cham_10a17.py   # Lớp 10A17
+
+# 4. Chạy Kiểm toán Kép 2 Vòng Độc Lập (Double-Check Gate)
+python double_check_cham_diem.py Lop_12B1 43
+python double_check_cham_diem.py Lop_12B4 36
+python double_check_cham_diem.py Lop_12B6 34
+
+# 5. Soát trùng bài tự luận & dọn dẹp rác hệ thống
+python soat_chep_bai_tu_luan.py
+python don_dep_he_thong.py
 ```
 
 ---
 
 ## ⚖️ BẢN QUYỀN
 Hệ thống được thiết kế và phát triển bởi **ThS. Nguyễn Văn Sang** - Khoa Cơ bản - Trường Cao đẳng Nghề số 1 - BQP.
-

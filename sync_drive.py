@@ -3,33 +3,50 @@ import urllib.request
 import os
 import re
 import sys
+import json
 
-out_dir = r"D:\TOAN\05_CONG_CU_VA_ENGINE\Cham_Diem_Hoc_Sinh\anh_bai_lam"
+out_dir = r"D:\TOAN\05_CONG_CU_VA_ENGINE\Cham_Diem_Hoc_Sinh\01_ANH_CHUA_CHAM"
 os.makedirs(out_dir, exist_ok=True)
 
-url = 'https://drive.google.com/drive/folders/1cULmlbvqnVm1jjXrioGwnTi-vb1Jrmvi'
+if len(sys.argv) > 1 and "drive.google.com" in sys.argv[1]:
+    url = sys.argv[1]
+else:
+    url = "https://drive.google.com/drive/folders/1Ig3MJyBVrLcgN8Yym9oeLurR0XzZc6ue"
+
+print(f"Đang quét Google Drive: {url}")
 req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-print("Đang quét Google Drive...")
 with urllib.request.urlopen(req) as resp:
     html = resp.read().decode('utf-8', errors='ignore')
 
-# Bóc tách tất cả các file IMG2026*.jpg
+# Bóc tách tất cả các file ảnh
 files = {}
-for m in re.finditer(r'(IMG2026\d+\.jpg)', html):
+
+# Pattern 1: Tìm trong khối data-initial-data hoặc JSON của Google Drive
+# Google Drive embed data: [id, [filename,...], mimeType, ...]
+for m in re.finditer(r'\"([a-zA-Z0-9_\-]{28,40})\"[,\s]*\[\"([^\"]+\.(?:jpg|jpeg|png|JPG|PNG))\"', html):
+    fid, fn = m.group(1), m.group(2)
+    if "icon" not in fn.lower() and "logo" not in fn.lower():
+        files[fn] = fid
+
+# Pattern 2: Tìm theo tên file và chunk xung quanh
+for m in re.finditer(r'(IMG[a-zA-Z0-9_\-]+\.(?:jpg|jpeg|png|JPG|PNG))', html):
     fn = m.group(1)
-    chunk = html[max(0, m.start() - 350):m.end() + 350]
-    # Tìm chuỗi file ID 33 ký tự
-    id_matches = re.findall(r'\"([a-zA-Z0-9_\-]{33})\"', chunk)
-    if id_matches:
-        files[fn] = id_matches[0]
+    if fn not in files:
+        chunk = html[max(0, m.start() - 350):min(len(html), m.end() + 350)]
+        id_matches = re.findall(r'\"([a-zA-Z0-9_\-]{33})\"', chunk)
+        if id_matches:
+            files[fn] = id_matches[0]
 
 print(f"Tổng số ảnh quét được trên Drive: {len(files)}")
+for fn, fid in sorted(files.items()):
+    print(f"  + {fn}: {fid}")
 
+# Tiến hành tải các ảnh mới về out_dir
 success = 0
 for i, (fn, fid) in enumerate(sorted(files.items()), 1):
     dest = os.path.join(out_dir, fn)
     if os.path.exists(dest) and os.path.getsize(dest) > 100000:
-        print(f"[{i}/{len(files)}] Đã có sẵn: {fn}")
+        print(f"[{i}/{len(files)}] Đã có sẵn: {fn} ({os.path.getsize(dest)} bytes)")
         success += 1
         continue
     down_url = f'https://drive.google.com/uc?export=download&id={fid}'

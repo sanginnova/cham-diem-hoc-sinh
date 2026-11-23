@@ -9,4 +9,8 @@ __pycache__/
 # Raw and output images (protect privacy & repo size)
 anh_bai_lam/
 anh_da_cham/
+01_ANH_CHUA_CHAM/
+02_ANH_DA_CHAM/
+*.zip
+~$*
 !docs/samples/

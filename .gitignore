@@ -6,11 +6,17 @@ __pycache__/
 .idea/
 .vscode/
 
-# Raw and output images (protect privacy & repo size)
-anh_bai_lam/
-anh_da_cham/
+# Private school data, exams, student photos & Excel results (keep local only)
+00_DE_VA_DAP_AN/
 01_ANH_CHUA_CHAM/
 02_ANH_DA_CHAM/
+03_KET_QUA_EXCEL/
+data_1*.py
+export_excel_1*.py
+tao_anh_da_cham_1*.py
+tao_bo_anh_da_cham.py
+anh_bai_lam/
+anh_da_cham/
 *.zip
 ~$*
 !docs/samples/

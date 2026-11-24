@@ -1,111 +1,56 @@
-# HỆ THỐNG SUB-AGENT CHẤM ĐIỂM BÀI THI TOÁN HỌC (THPT, CĐN01)
-> **Chủ nhiệm hệ thống**: ThS. Nguyễn Văn Sang - Khoa Cơ bản - Trường Cao đẳng Nghề số 1 - BQP  
-> **Sub-agent**: `cham-diem-hoc-sinh` (Gemini Multimodal Vision & Bilinear 4-Corner Optical OMR)  
-> **Tiêu chuẩn khảo thí**: Chương trình GDPT 2018 — Cấu trúc đề 4 phần (Thang điểm 10)
+# Hệ Thống Chấm Điểm Bài Thi Đa Môn Chuẩn GDPT 2018 (OMR + Tự Luận + Excel)
+
+Bộ công cụ tự động hóa chấm phiếu trắc nghiệm (Phần I, II, III), chấm bút đỏ sư phạm trên ảnh bài làm, sắp xếp kết quả theo bảng chữ cái tiếng Việt, xuất báo cáo Excel chi tiết và kiểm toán kép 2 vòng. Áp dụng được cho **mọi môn học và mọi bộ đề** theo cấu trúc GDPT 2018.
 
 ---
 
-## 🌟 TỔNG QUAN & CÔNG CỤ ĐÍNH KÈM
+## 1. Công cụ đi kèm trong Repo
 
-Hệ thống cung cấp giải pháp khép kín từ đồng bộ ảnh bài thi Google Drive, nhận diện kép (**Gemini Vision + Optical Bilinear 4 góc**), chấm bút đỏ sư phạm trực quan, kiểm toán 2 vòng bắt buộc, đến xuất bản báo cáo Excel:
-
-| Công cụ / Script đính kèm | Chức năng chính |
+| Tệp / Công cụ | Vai trò chính |
 | :--- | :--- |
-| **`CHAY_CHAM_DIEM.bat`** | Script chạy trọn gói 1-click trên Windows (Đồng bộ -> Xuất Excel -> Vẽ ảnh bút đỏ -> Double Check -> Dọn rác) |
-| **`sync_drive.py`** | Tải và đồng bộ ảnh bài làm từ thư mục Google Drive |
-| **`cham_diem_core.py`** | Engine chấm điểm & xuất Excel tổng hợp Lớp 12 (`Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12.xlsx`) |
-| **`export_excel_12b6.py`** / **`12b4.py`** / **`10a17.py`** | Xuất báo cáo Excel chi tiết từng lớp kèm Sheet `Đối Chiếu` & `Ảnh Cần Xác Nhận` |
-| **`tao_anh_da_cham_12b6.py`** / **`12b4.py`** / **`10a17.py`** / **`tao_bo_anh_da_cham.py`** | Engine vẽ vòng tròn xanh/cam/đỏ Bilinear 4 góc (OMR) + khung barem phân bước 0,25đ (Tự luận) |
-| **`double_check_cham_diem.py`** | Hệ thống Kiểm Toán Kép 2 Vòng độc lập (`Vòng 1`: Sĩ số, đáp án, kho ảnh; `Vòng 2`: Pixel phân vùng OMR & Tự luận) |
-| **`soat_chep_bai_tu_luan.py`** | Công cụ rà soát phát hiện bài tự luận có dấu hiệu chép nhau / trùng lập luận |
-| **`don_dep_he_thong.py`** | Tự động dọn sạch file rác/cache (`__pycache__`, lock Excel, ảnh crop tạm) |
+| `CHAY_CHAM_DIEM.bat` | Kịch bản chạy trọn gói 1-click trên Windows (đồng bộ Drive → xuất Excel → vẽ ảnh bút đỏ → double-check → dọn rác). |
+| `data_template.py` | **File mẫu cấu hình**: điền đáp án chuẩn `MASTER_KEYS` và danh sách bài làm cho môn học / mã đề của bạn. |
+| `common_utils.py` | Thư viện dùng chung: hàm sắp xếp tên tiếng Việt (`vn_name_sort_key`) và cấu hình đáp án mẫu. |
+| `sync_drive.py` | Đồng bộ ảnh bài làm từ Google Drive về thư mục `01_ANH_CHUA_CHAM/`. |
+| `cham_diem_core.py` | Engine tính điểm theo thang GDPT 2018, sắp xếp alphabe và xuất Excel (Bảng điểm + Đối chiếu chi tiết từng câu). |
+| `double_check_cham_diem.py` | Kiểm toán kép 2 vòng: tái chấm chéo đáp án, đối soát sĩ số/ảnh gốc & kiểm tra phân vùng ảnh chấm đỏ. |
+| `don_dep_he_thong.py` | Dọn dẹp file tạm, `__pycache__` sau khi xuất bản. |
+| `index.html` | Giao diện web **SmartOMR** chấm nhanh qua camera trình duyệt. |
+| `requirements.txt` | Danh sách thư viện Python cần cài đặt. |
 
 ---
 
-## ⚙️ HƯỚNG DẪN CÀI ĐẶT
+## 2. Yêu cầu môi trường & Cài đặt
 
-### 1. Yêu cầu môi trường
-- **Python**: `3.10+` (khuyến nghị `3.12`)
-- **Git**: Đã cài đặt `git` trên máy
-- **Font hệ thống (Windows)**: `C:\Windows\Fonts\arial.ttf` và `arialbd.ttf` (mặc định có sẵn trên Windows để hiển thị tiếng Việt có dấu trên ảnh chấm đỏ)
+- **Python 3.10+** (khuyến nghị Python 3.11 / 3.12), **Git**
+- Hệ điều hành Windows (có sẵn font `arial.ttf` / `arialbd.ttf` trong `C:\Windows\Fonts`)
 
-### 2. Cài đặt nhanh từ GitHub
 ```bash
-# 1. Clone repository về máy
+# 1. Tải mã nguồn về máy
 git clone https://github.com/sanginnova/cham-diem-hoc-sinh.git
 cd cham-diem-hoc-sinh
 
-# 2. (Khuyến nghị) Tạo môi trường ảo Python
+# 2. (Khuyên dùng) Tạo môi trường ảo Python
 python -m venv .venv
-# Windows PowerShell / CMD:
 .venv\Scripts\activate
 
-# 3. Cài đặt toàn bộ thư viện & công cụ đính kèm
-pip install --upgrade pip
+# 3. Cài đặt toàn bộ thư viện phụ thuộc
 pip install -r requirements.txt
 ```
 
-*(Hoặc cài nhanh thủ công từng gói: `pip install opencv-python numpy pillow openpyxl gdown python-docx`)*
-
-### 3. Cài đặt Skill cho Antigravity / AI Agent (Tùy chọn)
-Sao chép file skill `SKILL.md` vào thư mục `.agents/skills/cham-diem-hoc-sinh/` trong workspace để kích hoạt lệnh `/cham-diem-hoc-sinh`.
-
 ---
 
-## 📂 CẤU TRÚC THƯ MỤC CHUẨN
+## 3. Cách sử dụng cho môn học / đề thi khác
 
-```text
-Cham_Diem_Hoc_Sinh/
-├── 00_DE_VA_DAP_AN/
-│   ├── Khoi_10_GHK1_2026_2027/     # Bộ đề & đáp án Toán 10 (101-104, 201-204)
-│   └── Khoi_12_GHK1_2026_2027/     # Bộ đề & đáp án Toán 12 (101-104, 201-204)
-├── 01_ANH_CHUA_CHAM/               # Ảnh gốc tải từ Google Drive (ignored trên Git)
-├── 02_ANH_DA_CHAM/                 # Ảnh bài làm đã chấm bút đỏ (ignored trên Git)
-├── 03_KET_QUA_EXCEL/               # Bảng điểm & đối chiếu chi tiết (.xlsx)
-├── data_12b1.py / data_12b4.py / data_12b6.py / data_10a17.py
-├── requirements.txt                # Danh sách thư viện Python cần thiết
-├── CHAY_CHAM_DIEM.bat              # Chạy 1-click trên Windows
-└── docs/samples/                   # Ảnh mẫu bài làm đã chấm đỏ trực quan
-```
-
----
-
-## 🚀 HƯỚNG DẪN SỬ DỤNG
-
-### 1. Chạy 1-Click tự động (Windows)
-Nhấp đúp trực tiếp vào:
-```cmd
-CHAY_CHAM_DIEM.bat
-```
-
-### 2. Chạy từng công cụ qua Command Line
-```bash
-# 1. Đồng bộ ảnh bài làm từ Google Drive (thay link thư mục Drive tương ứng)
-python sync_drive.py "https://drive.google.com/drive/folders/<FOLDER_ID>"
-
-# 2. Xuất báo cáo Excel theo từng lớp
-python cham_diem_core.py          # Lớp 12B1 + file tổng hợp Khối 12
-python export_excel_12b4.py       # Lớp 12B4
-python export_excel_12b6.py       # Lớp 12B6
-python export_excel_10a17.py      # Lớp 10A17
-
-# 3. Xuất bộ ảnh bài làm đã chấm bút đỏ
-python tao_bo_anh_da_cham.py      # Lớp 12B1
-python tao_anh_da_cham_12b4.py    # Lớp 12B4
-python tao_anh_da_cham_12b6.py    # Lớp 12B6
-python tao_anh_da_cham_10a17.py   # Lớp 10A17
-
-# 4. Chạy Kiểm toán Kép 2 Vòng Độc Lập (Double-Check Gate)
-python double_check_cham_diem.py Lop_12B1 43
-python double_check_cham_diem.py Lop_12B4 36
-python double_check_cham_diem.py Lop_12B6 34
-
-# 5. Soát trùng bài tự luận & dọn dẹp rác hệ thống
-python soat_chep_bai_tu_luan.py
-python don_dep_he_thong.py
-```
-
----
-
-## ⚖️ BẢN QUYỀN
-Hệ thống được thiết kế và phát triển bởi **ThS. Nguyễn Văn Sang** - Khoa Cơ bản - Trường Cao đẳng Nghề số 1 - BQP.
+1. **Chuẩn bị thư mục dữ liệu cục bộ** (các thư mục này được `.gitignore` giữ riêng trên máy bạn, không đẩy lên GitHub):
+   - `00_DE_VA_DAP_AN/`: Lưu đề thi và đáp án gốc của bạn.
+   - `01_ANH_CHUA_CHAM/<Ten_Lop>/`: Chứa ảnh phiếu OMR và bài tự luận học sinh.
+2. **Cấu hình đáp án của bạn**:
+   - Sao chép `data_template.py` thành `data_<ten_lop>.py`, điền bảng đáp án `MASTER_KEYS` cho các mã đề của môn bạn dạy (Toán, Lý, Hóa, Sinh, Sử, Địa, GDKTPL...).
+3. **Chạy chấm điểm & kiểm toán**:
+   ```bash
+   python cham_diem_core.py
+   python double_check_cham_diem.py <Ten_Lop> <Si_So>
+   python don_dep_he_thong.py
+   ```
+   Hoặc chạy trực tiếp `CHAY_CHAM_DIEM.bat`. Kết quả xuất vào `03_KET_QUA_EXCEL/` và ảnh chấm bút đỏ lưu trong `02_ANH_DA_CHAM/`.

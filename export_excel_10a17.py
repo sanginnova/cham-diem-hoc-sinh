@@ -37,7 +37,12 @@ def _norm_p3(v):
     return str(v or "").strip().replace(".", ",")
 
 
+from common_utils import vn_name_sort_key
+
 def build_sheets(wb):
+    STUDENTS_10A17.sort(key=lambda s: vn_name_sort_key(s["name"]))
+    for _i, _s in enumerate(STUDENTS_10A17, 1):
+        _s["stt"] = _i
     # 1. Bảng Điểm 10A17
     if "Bảng Điểm 10A17" in wb.sheetnames:
         del wb["Bảng Điểm 10A17"]

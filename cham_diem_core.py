@@ -12,52 +12,9 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 from data_12b1 import STUDENTS_12B1 as STUDENT_RESULTS, NON_EXAM_FILES_12B1
+from common_utils import get_core_keys_12, vn_name_sort_key
 
-_CORE_KEYS = {
-    "101": {
-        "p1": ["A", "C", "D", "C", "D", "B", "D", "A", "B", "D", "B", "C"],
-        "p2": ["Đ", "Đ", "S", "S", "S", "Đ", "Đ", "S"],
-        "p3": ["2", "1", "7", "18"],
-    },
-    "102": {
-        "p1": ["A", "D", "A", "D", "D", "D", "D", "D", "C", "B", "A", "C"],
-        "p2": ["S", "Đ", "Đ", "S", "Đ", "Đ", "S", "S"],
-        "p3": ["7", "18", "1", "2"],
-    },
-    "103": {
-        "p1": ["B", "A", "B", "D", "C", "A", "A", "D", "B", "C", "A", "C"],
-        "p2": ["Đ", "Đ", "S", "S", "S", "Đ", "Đ", "S"],
-        "p3": ["18", "2", "1", "7"],
-    },
-    "104": {
-        "p1": ["D", "A", "B", "A", "D", "C", "A", "D", "C", "C", "D", "D"],
-        "p2": ["Đ", "Đ", "S", "S", "S", "Đ", "Đ", "S"],
-        "p3": ["2", "1", "7", "18"],
-    },
-    "201": {
-        "p1": ["D", "B", "C", "A", "C", "D", "B", "C", "B", "A", "B", "D"],
-        "p2": ["Đ", "S", "S", "Đ", "Đ", "S", "Đ", "Đ"],
-        "p3": ["7", "20", "1", "1"],
-    },
-    "202": {
-        "p1": ["D", "C", "A", "B", "B", "D", "A", "A", "A", "B", "A", "D"],
-        "p2": ["Đ", "S", "Đ", "Đ", "Đ", "S", "S", "Đ"],
-        "p3": ["1", "20", "1", "7"],
-    },
-    "203": {
-        "p1": ["A", "B", "D", "A", "B", "A", "C", "B", "A", "D", "C", "C"],
-        "p2": ["Đ", "S", "Đ", "Đ", "S", "Đ", "S", "Đ"],
-        "p3": ["1", "1", "20", "7"],
-    },
-    "204": {
-        "p1": ["B", "D", "A", "B", "D", "B", "C", "A", "C", "D", "A", "A"],
-        "p2": ["Đ", "S", "Đ", "Đ", "Đ", "S", "Đ", "S"],
-        "p3": ["1", "1", "7", "20"],
-    },
-}
-# Alias mapping 4-digit codes to 3-digit keys
-for _k in list(_CORE_KEYS.keys()):
-    _CORE_KEYS[f"0{_k}"] = _CORE_KEYS[_k]
+_CORE_KEYS = get_core_keys_12()
 
 _P2_BGD_SCALE = {0: 0.0, 1: 0.1, 2: 0.25, 3: 0.5, 4: 1.0}
 
@@ -129,6 +86,8 @@ for _r in STUDENT_RESULTS:
     _tot = _r["total"]
     _r["rank"] = "Xuất sắc" if _tot >= 9.0 else ("Giỏi" if _tot >= 8.0 else ("Khá" if _tot >= 6.5 else ("Trung bình" if _tot >= 5.0 else "Yếu")))
     generate_student_feedback(_r, _k)
+
+STUDENT_RESULTS.sort(key=lambda s: vn_name_sort_key(s["name"]))
 
 def export_excel():
     excel_path = r"D:\TOAN\05_CONG_CU_VA_ENGINE\Cham_Diem_Hoc_Sinh\03_KET_QUA_EXCEL\Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12.xlsx"
@@ -657,8 +616,11 @@ def export_excel():
     for ci, w in {1: 6, 2: 26, 3: 24, 4: 24, 5: 10, 6: 58, 7: 44}.items():
         ws4.column_dimensions[get_column_letter(ci)].width = w
 
+    excel_12b1 = r"D:\TOAN\05_CONG_CU_VA_ENGINE\Cham_Diem_Hoc_Sinh\03_KET_QUA_EXCEL\Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12B1.xlsx"
+    wb.save(excel_12b1)
     wb.save(excel_path)
     wb.close()
+    print(f"EXCEL 12B1 SAVED SUCCESSFULLY: {excel_12b1}")
     print(f"EXCEL SAVED SUCCESSFULLY: {excel_path}")
 
 if __name__ == '__main__':

@@ -33,32 +33,7 @@ EXCEL_MAIN = os.path.join(BASE_DIR, "03_KET_QUA_EXCEL", "Ket_Qua_Cham_Diem_Giua_
 EXCEL_12B6 = os.path.join(BASE_DIR, "03_KET_QUA_EXCEL", "Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12B6.xlsx")
 EXCEL_12B4 = os.path.join(BASE_DIR, "03_KET_QUA_EXCEL", "Ket_Qua_Cham_Diem_Giua_Ky_1_Lop12B4.xlsx")
 
-MASTER_KEYS = {
-    "101": {
-        "p1": ["A", "C", "D", "C", "D", "B", "D", "A", "B", "D", "B", "C"],
-        "p2_13": ["Đ", "Đ", "S", "S"],
-        "p2_14": ["S", "Đ", "Đ", "S"],
-        "p3": ["2", "1", "7", "18"],
-    },
-    "102": {
-        "p1": ["A", "D", "A", "D", "D", "D", "D", "D", "C", "B", "A", "C"],
-        "p2_13": ["S", "Đ", "Đ", "S"],
-        "p2_14": ["Đ", "Đ", "S", "S"],
-        "p3": ["7", "18", "1", "2"],
-    },
-    "103": {
-        "p1": ["B", "A", "B", "D", "C", "A", "A", "D", "B", "C", "A", "C"],
-        "p2_13": ["Đ", "Đ", "S", "S"],
-        "p2_14": ["S", "Đ", "Đ", "S"],
-        "p3": ["18", "2", "1", "7"],
-    },
-    "104": {
-        "p1": ["D", "A", "B", "A", "D", "C", "A", "D", "C", "C", "D", "D"],
-        "p2_13": ["Đ", "Đ", "S", "S"],
-        "p2_14": ["S", "Đ", "Đ", "S"],
-        "p3": ["2", "1", "7", "18"],
-    },
-}
+from common_utils import MASTER_KEYS_12 as MASTER_KEYS
 P2_SCALE = {0: 0.0, 1: 0.10, 2: 0.25, 3: 0.50, 4: 1.00}
 
 
